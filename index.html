@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="pt-BR" x-data="planner()" x-init="init()">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cajuna Planner</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { brand: { 400:'#c084fc', 500:'#a855f7', 600:'#9333ea', 700:'#7e22ce' } } } }
+    }
+  </script>
+  <style>[x-cloak]{display:none!important}</style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen" x-cloak>
+<div class="flex min-h-screen">
+
+  <!-- SIDEBAR -->
+  <aside class="w-60 bg-slate-900 border-r border-slate-800 flex flex-col fixed h-full z-40">
+    <div class="px-5 py-4 border-b border-slate-800">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold text-sm">C</div>
+        <div>
+          <p class="font-bold text-white text-sm">Cajuna Studio</p>
+          <p class="text-xs text-slate-500">Planner · 2026</p>
+        </div>
+      </div>
+    </div>
+    <nav class="flex-1 p-3 space-y-0.5">
+      <template x-for="nav in navItems" :key="nav.id">
+        <button @click="view=nav.id" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full"
+          :class="view===nav.id ? 'bg-brand-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'">
+          <span x-text="nav.icon" class="text-base"></span>
+          <span x-text="nav.label"></span>
+        </button>
+      </template>
+    </nav>
+    <!-- Status API -->
+    <div class="px-4 pb-2">
+      <div class="flex items-center gap-2 text-xs" :class="apiOk===null ? 'text-slate-600' : apiOk ? 'text-emerald-500' : 'text-red-400'">
+        <span class="w-2 h-2 rounded-full" :class="apiOk===null ? 'bg-slate-600' : apiOk ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'"></span>
+        <span x-text="apiOk===null ? 'Conectando…' : apiOk ? 'Sheets conectado' : 'Modo offline'"></span>
+      </div>
+    </div>
+    <div class="p-3 border-t border-slate-800 space-y-0.5">
+      <button @click="exportJSON()" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-colors w-full">
+        ⬇ Exportar JSON
+      </button>
+      <button @click="openSettings()" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-colors w-full">
+        ⚙ Configurações
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="ml-60 flex-1 p-6 min-h-screen">
+
+    <!-- TOPBAR -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-xl font-bold text-white" x-text="navItems.find(n=>n.id===view)?.label || ''"></h1>
+        <p class="text-xs text-slate-500 mt-0.5">Planejamento Estratégico · Jun–Set 2026</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span x-show="saving" class="text-xs text-slate-500 animate-pulse">Salvando…</span>
+        <button @click="openAddTask()" class="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+          + Nova Tarefa
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== DASHBOARD ===== -->
+    <div x-show="view==='dashboard'">
+      <!-- Stats -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <template x-for="s in stats()" :key="s.label">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+            <p class="text-xs text-slate-500 mb-1" x-text="s.label"></p>
+            <p class="text-2xl font-bold text-white" x-text="s.value"></p>
+            <p class="text-xs mt-1" :class="s.color" x-text="s.sub"></p>
+          </div>
+        </template>
+      </div>
+      <!-- Por fase -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <template x-for="fase in fases" :key="fase">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-semibold text-white" x-text="fase"></h3>
+              <span class="text-xs text-slate-500" x-text="tasks.filter(t=>t.mes===fase).length + ' tarefas'"></span>
+            </div>
+            <!-- Progress bar -->
+            <div class="w-full bg-slate-800 rounded-full h-1.5 mb-3">
+              <div class="h-1.5 rounded-full bg-brand-600 transition-all" :style="'width:'+phaseProgress(fase)+'%'"></div>
+            </div>
+            <div class="space-y-2">
+              <template x-for="t in tasks.filter(t=>t.mes===fase)" :key="t.id">
+                <div class="flex items-center gap-2 group">
+                  <button @click="cycleStatus(t)" :class="statusDot(t.status)" :title="t.status"></button>
+                  <span class="text-xs text-slate-300 flex-1 truncate" :class="t.status==='Concluído' ? 'line-through text-slate-600' : ''" x-text="t.tarefa"></span>
+                  <span class="text-xs px-1.5 py-0.5 rounded text-white shrink-0 opacity-80" :class="setorBg(t.setor)" x-text="t.setor"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+      </div>
+      <!-- Próximas reuniões -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <h3 class="text-sm font-semibold text-white mb-3">Próximas Reuniões · Terças e Quintas às 20:30</h3>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+          <template x-for="r in allMeetings.slice(0,6)" :key="r.data">
+            <div class="rounded-lg p-2.5 text-center border" :class="r.tipo==='Alinhamento' ? 'bg-brand-600/8 border-brand-600/30' : 'bg-amber-500/8 border-amber-500/30'">
+              <p class="text-xs font-bold" :class="r.tipo==='Alinhamento' ? 'text-brand-400' : 'text-amber-400'" x-text="r.diaSemana"></p>
+              <p class="text-sm font-semibold text-white mt-0.5" x-text="r.data"></p>
+              <p class="text-xs text-slate-500" x-text="r.tipo"></p>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== GANTT ===== -->
+    <div x-show="view==='gantt'">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 overflow-x-auto">
+        <div style="min-width:900px">
+          <!-- Cabeçalho de fases -->
+          <div class="flex mb-2">
+            <div style="width:230px" class="shrink-0"></div>
+            <div class="flex-1 grid grid-cols-3">
+              <div class="text-xs font-bold text-indigo-400 border-l border-slate-700 pl-2 py-1 truncate">Mês 1 — Consolidação</div>
+              <div class="text-xs font-bold text-amber-400 border-l border-slate-700 pl-2 py-1 truncate">Mês 2 — Ativação Comercial</div>
+              <div class="text-xs font-bold text-emerald-400 border-l border-slate-700 pl-2 py-1 truncate">Mês 3 — Crescimento</div>
+            </div>
+          </div>
+          <!-- Linhas -->
+          <template x-for="t in tasks" :key="t.id">
+            <div class="flex items-center mb-1.5 group">
+              <div style="width:230px" class="shrink-0 pr-3">
+                <p class="text-xs text-slate-300 truncate" x-text="t.tarefa"></p>
+                <p class="text-xs text-slate-600 truncate" x-text="t.responsavel"></p>
+              </div>
+              <div class="flex-1 relative h-6 bg-slate-800/60 rounded">
+                <div class="absolute h-full rounded cursor-pointer transition-all group-hover:opacity-100 opacity-75"
+                     :style="ganttBar(t)" :class="setorBg(t.setor)+' '+(t.status==='Concluído'?'opacity-40':'')"
+                     :title="t.tarefa+' · '+t.inicio+' → '+t.fim+' ['+t.status+']'">
+                  <!-- Check overlay se concluído -->
+                  <span x-show="t.status==='Concluído'" class="absolute inset-0 flex items-center justify-center text-white/60 text-xs">✓</span>
+                </div>
+              </div>
+            </div>
+          </template>
+          <!-- Legenda -->
+          <div class="flex flex-wrap gap-3 mt-4 pt-3 border-t border-slate-800">
+            <template x-for="s in setores" :key="s">
+              <span class="flex items-center gap-1.5 text-xs text-slate-400">
+                <span class="w-3 h-3 rounded-sm inline-block" :class="setorBg(s)"></span>
+                <span x-text="s"></span>
+              </span>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAREFAS ===== -->
+    <div x-show="view==='tasks'">
+      <div class="flex gap-2 mb-4 flex-wrap">
+        <select x-model="filterMes"    class="bg-slate-900 border border-slate-800 text-xs text-slate-300 px-3 py-2 rounded-lg focus:outline-none">
+          <option value="">Todas as fases</option>
+          <template x-for="f in fases" :key="f"><option x-text="f"></option></template>
+        </select>
+        <select x-model="filterSetor"  class="bg-slate-900 border border-slate-800 text-xs text-slate-300 px-3 py-2 rounded-lg focus:outline-none">
+          <option value="">Todos os setores</option>
+          <template x-for="s in setores" :key="s"><option x-text="s"></option></template>
+        </select>
+        <select x-model="filterStatus" class="bg-slate-900 border border-slate-800 text-xs text-slate-300 px-3 py-2 rounded-lg focus:outline-none">
+          <option value="">Todos os status</option>
+          <option>A fazer</option><option>Em andamento</option><option>Concluído</option>
+        </select>
+        <input x-model="filterSearch" placeholder="Buscar tarefa…" class="bg-slate-900 border border-slate-800 text-xs text-slate-300 px-3 py-2 rounded-lg focus:outline-none flex-1 min-w-32" />
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <table class="w-full text-sm">
+          <thead><tr class="border-b border-slate-800 text-xs text-slate-500 uppercase tracking-wide">
+            <th class="px-4 py-3 text-left">Tarefa</th>
+            <th class="px-4 py-3 text-left">Setor</th>
+            <th class="px-4 py-3 text-left">Responsável</th>
+            <th class="px-4 py-3 text-left">Início</th>
+            <th class="px-4 py-3 text-left">Fim</th>
+            <th class="px-4 py-3 text-left">Status</th>
+            <th class="px-4 py-3 text-left">Ações</th>
+          </tr></thead>
+          <tbody>
+            <template x-for="t in filteredTasks()" :key="t.id">
+              <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+                <td class="px-4 py-2.5">
+                  <p class="text-slate-200 text-sm" :class="t.status==='Concluído'?'line-through text-slate-500':''" x-text="t.tarefa"></p>
+                  <p x-show="t.obs" class="text-xs text-slate-500 mt-0.5" x-text="t.obs"></p>
+                </td>
+                <td class="px-4 py-2.5"><span class="text-xs px-2 py-0.5 rounded-full text-white" :class="setorBg(t.setor)" x-text="t.setor"></span></td>
+                <td class="px-4 py-2.5 text-slate-400 text-xs" x-text="t.responsavel"></td>
+                <td class="px-4 py-2.5 text-slate-400 text-xs" x-text="t.inicio"></td>
+                <td class="px-4 py-2.5 text-slate-400 text-xs" x-text="t.fim"></td>
+                <td class="px-4 py-2.5">
+                  <select @change="updateStatus(t,$event.target.value)" class="bg-slate-800 border border-slate-700 text-xs rounded px-2 py-1 focus:outline-none" :class="statusColor(t.status)">
+                    <option :selected="t.status==='A fazer'">A fazer</option>
+                    <option :selected="t.status==='Em andamento'">Em andamento</option>
+                    <option :selected="t.status==='Concluído'">Concluído</option>
+                  </select>
+                </td>
+                <td class="px-4 py-2.5">
+                  <div class="flex gap-2">
+                    <button @click="editTask(t)" class="text-xs text-slate-500 hover:text-brand-400 transition-colors">✏</button>
+                    <button @click="deleteTask(t.id)" class="text-xs text-slate-500 hover:text-red-400 transition-colors">🗑</button>
+                  </div>
+                </td>
+              </tr>
+            </template>
+            <tr x-show="filteredTasks().length===0">
+              <td colspan="7" class="px-4 py-8 text-center text-slate-600 text-sm">Nenhuma tarefa encontrada</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== REUNIÕES ===== -->
+    <div x-show="view==='reunioes'">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <h3 class="font-semibold text-white mb-4 flex items-center gap-2">🟣 Terça-feira · 20:30 — Alinhamento</h3>
+          <div class="space-y-3">
+            <template x-for="item in meetingTerca" :key="item.setor">
+              <div class="flex gap-3 items-start">
+                <span class="text-xs text-brand-400 font-mono w-14 shrink-0 pt-0.5" x-text="item.tempo"></span>
+                <div>
+                  <p class="text-sm font-medium text-white" x-text="item.setor"></p>
+                  <p class="text-xs text-slate-400 mt-0.5" x-text="item.pauta"></p>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <h3 class="font-semibold text-white mb-4 flex items-center gap-2">🟡 Quinta-feira · 20:30 — Revisão</h3>
+          <div class="space-y-3">
+            <template x-for="item in meetingQuinta" :key="item.setor">
+              <div class="flex gap-3 items-start">
+                <span class="text-xs text-amber-400 font-mono w-14 shrink-0 pt-0.5" x-text="item.tempo"></span>
+                <div>
+                  <p class="text-sm font-medium text-white" x-text="item.setor"></p>
+                  <p class="text-xs text-slate-400 mt-0.5" x-text="item.pauta"></p>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <h3 class="font-semibold text-white mb-4">Calendário de Reuniões · Jun–Set 2026</h3>
+        <div class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-9 gap-2">
+          <template x-for="r in allMeetings" :key="r.data">
+            <div class="border rounded-lg p-2 text-center" :class="r.tipo==='Alinhamento' ? 'border-brand-600/40 bg-brand-600/5' : 'border-amber-500/40 bg-amber-500/5'">
+              <p class="text-xs font-bold" :class="r.tipo==='Alinhamento' ? 'text-brand-400' : 'text-amber-400'" x-text="r.diaSemana"></p>
+              <p class="text-xs font-semibold text-white mt-0.5" x-text="r.data"></p>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ===== MODAL TAREFA ===== -->
+<div x-show="modal" @click.self="modal=false" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+  <div @click.stop class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 shadow-2xl">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-base font-bold text-white" x-text="editingId ? 'Editar Tarefa' : 'Nova Tarefa'"></h2>
+      <button @click="modal=false" class="text-slate-500 hover:text-white transition-colors text-xl leading-none">&times;</button>
+    </div>
+    <div class="space-y-3">
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Tarefa *</label>
+        <input x-model="form.tarefa" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Nome da tarefa" />
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Setor</label>
+          <select x-model="form.setor" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500">
+            <template x-for="s in setores" :key="s"><option x-text="s"></option></template>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Responsável</label>
+          <input x-model="form.responsavel" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Alex, Hugo…" />
+        </div>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Fase</label>
+        <select x-model="form.mes" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500">
+          <template x-for="f in fases" :key="f"><option x-text="f"></option></template>
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Início</label>
+          <input type="date" x-model="form.inicio" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Fim</label>
+          <input type="date" x-model="form.fim" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500" />
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Status</label>
+          <select x-model="form.status" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500">
+            <option>A fazer</option><option>Em andamento</option><option>Concluído</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Observação</label>
+          <input x-model="form.obs" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Opcional" />
+        </div>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-5">
+      <button @click="saveTask()" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-medium py-2 rounded-lg text-sm transition-colors">Salvar</button>
+      <button @click="modal=false" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2 rounded-lg text-sm transition-colors">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL CONFIGURAÇÕES ===== -->
+<div x-show="settingsModal" @click.self="settingsModal=false" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+  <div @click.stop class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-base font-bold text-white">⚙ Configurações</h2>
+      <button @click="settingsModal=false" class="text-slate-500 hover:text-white text-xl leading-none">&times;</button>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">URL da API (Google Apps Script)</label>
+        <input x-model="apiUrl" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500 font-mono" placeholder="https://script.google.com/macros/s/.../exec" />
+        <p class="text-xs text-slate-600 mt-1">Cole aqui a URL gerada na implantação do Apps Script</p>
+      </div>
+      <div class="bg-slate-800 rounded-lg p-3 text-xs text-slate-400 space-y-1">
+        <p class="font-semibold text-slate-300">Como configurar:</p>
+        <p>1. Abra a planilha → Extensões → Apps Script</p>
+        <p>2. Cole o código do arquivo <code class="text-brand-400">api.gs</code></p>
+        <p>3. Implantar → Nova implantação → Web App</p>
+        <p>4. Executar como: <strong>Eu mesmo</strong> · Acesso: <strong>Qualquer pessoa</strong></p>
+        <p>5. Copie a URL e cole acima</p>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-5">
+      <button @click="saveSettings()" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-medium py-2 rounded-lg text-sm transition-colors">Salvar e Reconectar</button>
+      <button @click="settingsModal=false" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2 rounded-lg text-sm transition-colors">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function planner() {
+  return {
+    // state
+    view: 'dashboard',
+    modal: false, settingsModal: false,
+    editingId: null,
+    filterMes:'', filterSetor:'', filterStatus:'', filterSearch:'',
+    form: {},
+    tasks: [],
+    saving: false,
+    apiOk: null,
+    apiUrl: localStorage.getItem('cajuna_api_url') || '',
+
+    // config
+    fases: ['Mês 1 — Consolidação','Mês 2 — Ativação Comercial','Mês 3 — Crescimento'],
+    setores: ['Site','Comercial','Operações','Conteúdo','Jurídico','Financeiro','Experiência','Criativo','Marketing'],
+    ganttStart: new Date('2026-06-23'),
+    ganttEnd:   new Date('2026-09-22'),
+    allMeetings: [],
+    navItems: [
+      { id:'dashboard', label:'Dashboard',  icon:'📊' },
+      { id:'gantt',     label:'Cronograma', icon:'📅' },
+      { id:'tasks',     label:'Tarefas',    icon:'✅' },
+      { id:'reunioes',  label:'Reuniões',   icon:'🗓' },
+    ],
+    meetingTerca: [
+      { setor:'Conexão',     tempo:'5 min',  pauta:'Quantos leads novos? Reuniões agendadas?' },
+      { setor:'Experiência', tempo:'5 min',  pauta:'Briefings coletados? Clientes aguardando?' },
+      { setor:'Criativo',    tempo:'10 min', pauta:'Status de cada projeto — moodboard, manual, artes' },
+      { setor:'Atração',     tempo:'5 min',  pauta:'Posts publicados? Performance dos anúncios?' },
+      { setor:'Financeiro',  tempo:'5 min',  pauta:'Pagamentos pendentes? Notas a emitir?' },
+      { setor:'Bloqueios',   tempo:'10 min', pauta:'O que está travado e precisa de decisão coletiva' },
+    ],
+    meetingQuinta: [
+      { setor:'Revisão criativa', tempo:'15 min', pauta:'Hugo apresenta materiais; Alex/Ewerton validam' },
+      { setor:'Feedbacks',        tempo:'10 min', pauta:'Feedbacks de clientes recebidos na semana' },
+      { setor:'Prazos',           tempo:'5 min',  pauta:'Ajuste de prazos se necessário' },
+      { setor:'Preview',          tempo:'10 min', pauta:'O que será entregue na semana seguinte?' },
+    ],
+
+    // ---- INIT ----
+    async init() {
+      this.buildMeetings();
+      await this.loadTasks();
+    },
+
+    async loadTasks() {
+      if (!this.apiUrl) {
+        this.apiOk = false;
+        this.tasks = this.defaultTasks();
+        return;
+      }
+      try {
+        const res = await fetch(this.apiUrl + '?action=getTasks');
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          this.tasks = data;
+          this.apiOk = true;
+        } else if (Array.isArray(data) && data.length === 0) {
+          // planilha vazia — seed
+          this.tasks = this.defaultTasks();
+          await this.syncAll();
+          this.apiOk = true;
+        } else {
+          throw new Error('Resposta inválida');
+        }
+      } catch(e) {
+        this.apiOk = false;
+        const local = localStorage.getItem('cajuna_tasks');
+        this.tasks = local ? JSON.parse(local) : this.defaultTasks();
+      }
+    },
+
+    async syncAll() {
+      if (!this.apiUrl) return;
+      try {
+        await fetch(this.apiUrl, {
+          method:'POST',
+          body: JSON.stringify({ action:'saveTasks', tasks:this.tasks }),
+        });
+        this.apiOk = true;
+      } catch(e) { this.apiOk = false; }
+    },
+
+    async syncTask(task) {
+      localStorage.setItem('cajuna_tasks', JSON.stringify(this.tasks));
+      if (!this.apiUrl) return;
+      this.saving = true;
+      try {
+        await fetch(this.apiUrl, {
+          method:'POST',
+          body: JSON.stringify({ action:'saveTask', task }),
+        });
+        this.apiOk = true;
+      } catch(e) { this.apiOk = false; }
+      this.saving = false;
+    },
+
+    async removeTask(id) {
+      this.tasks = this.tasks.filter(t => t.id !== id);
+      localStorage.setItem('cajuna_tasks', JSON.stringify(this.tasks));
+      if (!this.apiUrl) return;
+      this.saving = true;
+      try {
+        await fetch(this.apiUrl, {
+          method:'POST',
+          body: JSON.stringify({ action:'deleteTask', id }),
+        });
+      } catch(e) {}
+      this.saving = false;
+    },
+
+    // ---- SETTINGS ----
+    openSettings() { this.settingsModal = true; },
+    async saveSettings() {
+      localStorage.setItem('cajuna_api_url', this.apiUrl);
+      this.settingsModal = false;
+      this.apiOk = null;
+      await this.loadTasks();
+    },
+
+    // ---- TASK CRUD ----
+    openAddTask() {
+      this.editingId = null;
+      this.form = { tarefa:'', setor:'Comercial', responsavel:'', mes:this.fases[0], inicio:'2026-06-23', fim:'2026-06-29', status:'A fazer', obs:'' };
+      this.modal = true;
+    },
+    editTask(t) { this.editingId = t.id; this.form = { ...t }; this.modal = true; },
+    async saveTask() {
+      if (!this.form.tarefa.trim()) return;
+      if (this.editingId) {
+        const i = this.tasks.findIndex(t => t.id === this.editingId);
+        if (i !== -1) this.tasks[i] = { ...this.form, id: this.editingId };
+        await this.syncTask(this.tasks[i]);
+      } else {
+        const newId = this.tasks.length ? Math.max(...this.tasks.map(t=>Number(t.id)||0))+1 : 1;
+        const newTask = { ...this.form, id: newId };
+        this.tasks.push(newTask);
+        await this.syncTask(newTask);
+      }
+      this.modal = false;
+    },
+    async deleteTask(id) {
+      if (!confirm('Remover esta tarefa?')) return;
+      await this.removeTask(id);
+    },
+    async cycleStatus(t) {
+      const c = {'A fazer':'Em andamento','Em andamento':'Concluído','Concluído':'A fazer'};
+      t.status = c[t.status];
+      await this.syncTask(t);
+    },
+    async updateStatus(t, val) {
+      t.status = val;
+      await this.syncTask(t);
+    },
+
+    // ---- COMPUTED ----
+    filteredTasks() {
+      return this.tasks.filter(t => {
+        if (this.filterMes    && t.mes    !== this.filterMes)    return false;
+        if (this.filterSetor  && t.setor  !== this.filterSetor)  return false;
+        if (this.filterStatus && t.status !== this.filterStatus) return false;
+        if (this.filterSearch && !t.tarefa.toLowerCase().includes(this.filterSearch.toLowerCase())) return false;
+        return true;
+      });
+    },
+    stats() {
+      const total = this.tasks.length || 1;
+      const done  = this.tasks.filter(t=>t.status==='Concluído').length;
+      const inp   = this.tasks.filter(t=>t.status==='Em andamento').length;
+      const todo  = this.tasks.filter(t=>t.status==='A fazer').length;
+      return [
+        { label:'Total de Tarefas', value:this.tasks.length, sub:'nos 3 meses',               color:'text-slate-500'  },
+        { label:'Concluídas',       value:done,  sub:`${Math.round(done/total*100)}% completo`, color:'text-emerald-400' },
+        { label:'Em Andamento',     value:inp,   sub:'em execução',                             color:'text-amber-400'  },
+        { label:'A Fazer',          value:todo,  sub:'na fila',                                 color:'text-slate-500'  },
+      ];
+    },
+    phaseProgress(fase) {
+      const t = this.tasks.filter(x=>x.mes===fase);
+      if (!t.length) return 0;
+      return Math.round(t.filter(x=>x.status==='Concluído').length / t.length * 100);
+    },
+    ganttBar(t) {
+      const total = (this.ganttEnd - this.ganttStart) / 86400000;
+      const s = (new Date(t.inicio) - this.ganttStart) / 86400000;
+      const e = (new Date(t.fim)    - this.ganttStart) / 86400000;
+      return `position:absolute;top:0;bottom:0;left:${Math.max(0,(s/total)*100).toFixed(2)}%;width:${Math.max(1,((e-s+1)/total)*100).toFixed(2)}%;`;
+    },
+    setorBg(s) {
+      return ({'Site':'bg-indigo-600','Comercial':'bg-amber-600','Operações':'bg-emerald-600',
+               'Conteúdo':'bg-pink-600','Jurídico':'bg-violet-600','Financeiro':'bg-teal-600',
+               'Experiência':'bg-blue-600','Criativo':'bg-orange-600','Marketing':'bg-red-600'}[s]||'bg-slate-600');
+    },
+    statusDot(s) {
+      const b='w-3 h-3 rounded-full border-2 shrink-0 cursor-pointer ';
+      return s==='Concluído'?b+'bg-emerald-500 border-emerald-500':s==='Em andamento'?b+'bg-amber-500 border-amber-500':b+'bg-transparent border-slate-600';
+    },
+    statusColor(s) {
+      return s==='Concluído'?'text-emerald-400':s==='Em andamento'?'text-amber-400':'text-slate-400';
+    },
+
+    // ---- MEETINGS ----
+    buildMeetings() {
+      let d=new Date('2026-06-23'), end=new Date('2026-09-22');
+      while(d<=end) {
+        const dow=d.getDay();
+        if(dow===2||dow===4) this.allMeetings.push({
+          data: d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}),
+          diaSemana: dow===2?'Terça':'Quinta',
+          tipo: dow===2?'Alinhamento':'Revisão',
+        });
+        d.setDate(d.getDate()+1);
+      }
+    },
+
+    // ---- EXPORT ----
+    exportJSON() {
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(new Blob([JSON.stringify(this.tasks,null,2)],{type:'application/json'}));
+      a.download='cajuna-planner.json'; a.click();
+    },
+
+    // ---- DEFAULT DATA ----
+    defaultTasks() {
+      return [
+        {id:1, tarefa:'Finalizar e publicar site',       setor:'Site',        responsavel:'Alex + Hugo',    inicio:'2026-06-23',fim:'2026-06-29',mes:'Mês 1 — Consolidação',      status:'A fazer',obs:''},
+        {id:2, tarefa:'Estruturar processo comercial',   setor:'Comercial',   responsavel:'Alex + Ewerton', inicio:'2026-06-23',fim:'2026-06-29',mes:'Mês 1 — Consolidação',      status:'A fazer',obs:''},
+        {id:3, tarefa:'Template de proposta visual',     setor:'Comercial',   responsavel:'Alex',           inicio:'2026-06-30',fim:'2026-07-06',mes:'Mês 1 — Consolidação',      status:'A fazer',obs:''},
+        {id:4, tarefa:'Configurar Trello (funil)',        setor:'Operações',   responsavel:'Alex + Ewerton', inicio:'2026-06-30',fim:'2026-07-06',mes:'Mês 1 — Consolidação',      status:'A fazer',obs:''},
+        {id:5, tarefa:'Lançar Instagram e TikTok',       setor:'Conteúdo',    responsavel:'Hugo',           inicio:'2026-07-07',fim:'2026-07-13',mes:'Mês 1 — Consolidação',      status:'A fazer',obs:''},
+        {id:6, tarefa:'Revisar contratos e termos',      setor:'Jurídico',    responsavel:'Alex',           inicio:'2026-07-07',fim:'2026-07-13',mes:'Mês 1 — Consolidação',      status:'A fazer',obs:''},
+        {id:7, tarefa:'Definir metas de faturamento',    setor:'Financeiro',  responsavel:'Ewerton + Alex', inicio:'2026-07-14',fim:'2026-07-22',mes:'Mês 1 — Consolidação',      status:'A fazer',obs:''},
+        {id:8, tarefa:'Documentar SLA de entregas',      setor:'Operações',   responsavel:'Hugo + Alex',    inicio:'2026-07-14',fim:'2026-07-22',mes:'Mês 1 — Consolidação',      status:'A fazer',obs:''},
+        {id:9, tarefa:'Prospecção ativa (leads)',         setor:'Comercial',   responsavel:'Alex + Ewerton', inicio:'2026-07-23',fim:'2026-08-05',mes:'Mês 2 — Ativação Comercial',status:'A fazer',obs:''},
+        {id:10,tarefa:'Testar fluxo de briefing',        setor:'Experiência', responsavel:'Ewerton + Hugo', inicio:'2026-07-23',fim:'2026-08-05',mes:'Mês 2 — Ativação Comercial',status:'A fazer',obs:''},
+        {id:11,tarefa:'Produzir 1º case/portfólio',      setor:'Criativo',    responsavel:'Hugo',           inicio:'2026-08-06',fim:'2026-08-12',mes:'Mês 2 — Ativação Comercial',status:'A fazer',obs:''},
+        {id:12,tarefa:'Subir campanhas tráfego pago',    setor:'Marketing',   responsavel:'Hugo',           inicio:'2026-08-06',fim:'2026-08-19',mes:'Mês 2 — Ativação Comercial',status:'A fazer',obs:''},
+        {id:13,tarefa:'Revisão de precificação',         setor:'Financeiro',  responsavel:'Ewerton + Alex', inicio:'2026-08-13',fim:'2026-08-22',mes:'Mês 2 — Ativação Comercial',status:'A fazer',obs:''},
+        {id:14,tarefa:'Controle de caixa e NF',          setor:'Financeiro',  responsavel:'Ewerton',        inicio:'2026-08-23',fim:'2026-09-05',mes:'Mês 3 — Crescimento',       status:'A fazer',obs:''},
+        {id:15,tarefa:'Upsell ID Visual → Social',       setor:'Comercial',   responsavel:'Alex + Ewerton', inicio:'2026-08-23',fim:'2026-09-05',mes:'Mês 3 — Crescimento',       status:'A fazer',obs:''},
+        {id:16,tarefa:'Retrospectiva dos 3 meses',       setor:'Operações',   responsavel:'Todos',          inicio:'2026-09-09',fim:'2026-09-15',mes:'Mês 3 — Crescimento',       status:'A fazer',obs:''},
+        {id:17,tarefa:'Planejamento próximo trimestre',  setor:'Operações',   responsavel:'Todos',          inicio:'2026-09-16',fim:'2026-09-22',mes:'Mês 3 — Crescimento',       status:'A fazer',obs:''},
+      ];
+    },
+  };
+}
+</script>
+</body>
+</html>
