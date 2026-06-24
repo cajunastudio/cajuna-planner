@@ -8,7 +8,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script>
     tailwind.config = {
-      theme: { extend: { colors: { brand: { 400:'#c084fc', 500:'#a855f7', 600:'#9333ea', 700:'#7e22ce' } } } }
+      theme: { extend: { colors: { brand: { 400:'#c084fc',500:'#a855f7',600:'#9333ea',700:'#7e22ce' } } } }
     }
   </script>
   <style>
@@ -16,398 +16,482 @@
     ::-webkit-scrollbar{width:4px;height:4px}
     ::-webkit-scrollbar-track{background:transparent}
     ::-webkit-scrollbar-thumb{background:#334155;border-radius:4px}
+    .kanban-col{min-height:200px;transition:background .15s}
+    .kanban-col.drag-over{background:rgba(148,51,234,.10);outline:2px dashed rgba(148,51,234,.5);border-radius:12px}
+    .deal-card{cursor:grab;transition:opacity .15s,transform .15s,box-shadow .15s}
+    .deal-card:active{cursor:grabbing}
+    .deal-card.dragging{opacity:.35;transform:scale(.96)}
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen" x-cloak>
 <div class="flex min-h-screen">
 
-  <!-- SIDEBAR desktop -->
-  <aside class="hidden md:flex w-56 bg-slate-900 border-r border-slate-800 flex-col fixed h-full z-40">
-    <div class="px-5 py-4 border-b border-slate-800">
-      <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold text-sm">C</div>
-        <div>
-          <p class="font-bold text-white text-sm">Cajuna Studio</p>
-          <p class="text-xs text-slate-500">Planner · 2026</p>
-        </div>
-      </div>
+<!-- SIDEBAR desktop -->
+<aside class="hidden md:flex w-56 bg-slate-900 border-r border-slate-800 flex-col fixed h-full z-40">
+  <div class="px-5 py-4 border-b border-slate-800">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold text-sm">C</div>
+      <div><p class="font-bold text-white text-sm">Cajuna Studio</p><p class="text-xs text-slate-500">Planner · 2026</p></div>
     </div>
-    <nav class="flex-1 p-3 space-y-0.5">
-      <template x-for="nav in navItems" :key="nav.id">
-        <button @click="view=nav.id" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full"
-          :class="view===nav.id?'bg-brand-600 text-white':'text-slate-400 hover:bg-slate-800 hover:text-white'">
-          <span x-text="nav.icon" class="text-base"></span>
-          <span x-text="nav.label"></span>
-        </button>
+  </div>
+  <nav class="flex-1 p-3 space-y-0.5">
+    <template x-for="nav in navItems" :key="nav.id">
+      <button @click="view=nav.id" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full"
+        :class="view===nav.id?'bg-brand-600 text-white':'text-slate-400 hover:bg-slate-800 hover:text-white'">
+        <span x-text="nav.icon" class="text-base"></span><span x-text="nav.label"></span>
+      </button>
+    </template>
+  </nav>
+  <div class="px-4 pb-2">
+    <div class="flex items-center gap-2 text-xs" :class="apiOk===null?'text-slate-600':apiOk?'text-emerald-500':'text-red-400'">
+      <span class="w-2 h-2 rounded-full" :class="apiOk===null?'bg-slate-600':apiOk?'bg-emerald-500 animate-pulse':'bg-red-500'"></span>
+      <span x-text="apiOk===null?'Conectando…':apiOk?'Sheets conectado':'Modo offline'"></span>
+    </div>
+  </div>
+  <div class="p-3 border-t border-slate-800 space-y-0.5">
+    <button @click="exportJSON()" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-colors w-full">⬇ Exportar JSON</button>
+    <button @click="openSettings()" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-colors w-full">⚙ Configurações</button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="md:ml-56 flex-1 p-4 md:p-6 pb-24 md:pb-6 min-h-screen">
+
+  <!-- TOPBAR -->
+  <div class="flex items-center justify-between mb-5">
+    <div>
+      <h1 class="text-lg md:text-xl font-bold text-white" x-text="navItems.find(n=>n.id===view)?.label||''"></h1>
+      <p class="text-xs text-slate-500 mt-0.5 hidden sm:block">Planejamento Estratégico · Jun–Set 2026</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <span x-show="saving" class="text-xs text-slate-500 animate-pulse hidden sm:block">Salvando…</span>
+      <span class="md:hidden w-2 h-2 rounded-full" :class="apiOk===null?'bg-slate-600':apiOk?'bg-emerald-500':'bg-red-500'"></span>
+      <button x-show="view==='kanban'" @click="openNewDeal()" class="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-3 py-2 rounded-lg transition-colors">
+        <span class="text-base leading-none">+</span><span class="hidden sm:inline">Nova Negociação</span>
+      </button>
+      <button x-show="view!=='kanban'" @click="openAddTask()" class="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-3 py-2 rounded-lg transition-colors">
+        <span class="text-base leading-none">+</span><span class="hidden sm:inline">Nova Tarefa</span>
+      </button>
+      <button @click="openSettings()" class="md:hidden text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition-colors">⚙</button>
+    </div>
+  </div>
+
+  <!-- ===== DASHBOARD ===== -->
+  <div x-show="view==='dashboard'">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <template x-for="s in stats()" :key="s.label">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 md:p-4">
+          <p class="text-xs text-slate-500 mb-1" x-text="s.label"></p>
+          <p class="text-2xl font-bold text-white" x-text="s.value"></p>
+          <p class="text-xs mt-1" :class="s.color" x-text="s.sub"></p>
+        </div>
       </template>
-    </nav>
-    <div class="px-4 pb-2">
-      <div class="flex items-center gap-2 text-xs" :class="apiOk===null?'text-slate-600':apiOk?'text-emerald-500':'text-red-400'">
-        <span class="w-2 h-2 rounded-full" :class="apiOk===null?'bg-slate-600':apiOk?'bg-emerald-500 animate-pulse':'bg-red-500'"></span>
-        <span x-text="apiOk===null?'Conectando…':apiOk?'Sheets conectado':'Modo offline'"></span>
-      </div>
     </div>
-    <div class="p-3 border-t border-slate-800 space-y-0.5">
-      <button @click="exportJSON()" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-colors w-full">⬇ Exportar JSON</button>
-      <button @click="openSettings()" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-colors w-full">⚙ Configurações</button>
-    </div>
-  </aside>
-
-  <!-- MAIN -->
-  <main class="md:ml-56 flex-1 p-4 md:p-6 pb-24 md:pb-6 min-h-screen">
-
-    <!-- TOPBAR -->
-    <div class="flex items-center justify-between mb-5">
-      <div>
-        <h1 class="text-lg md:text-xl font-bold text-white" x-text="navItems.find(n=>n.id===view)?.label||''"></h1>
-        <p class="text-xs text-slate-500 mt-0.5 hidden sm:block">Planejamento Estratégico · Jun–Set 2026</p>
-      </div>
-      <div class="flex items-center gap-2">
-        <span x-show="saving" class="text-xs text-slate-500 animate-pulse hidden sm:block">Salvando…</span>
-        <span class="md:hidden w-2 h-2 rounded-full" :class="apiOk===null?'bg-slate-600':apiOk?'bg-emerald-500':'bg-red-500'"></span>
-        <button @click="openAddTask()" class="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-3 py-2 rounded-lg transition-colors">
-          <span class="text-base leading-none">+</span>
-          <span class="hidden sm:inline">Nova Tarefa</span>
-        </button>
-        <button @click="openSettings()" class="md:hidden text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition-colors">⚙</button>
-      </div>
-    </div>
-
-    <!-- ===== DASHBOARD ===== -->
-    <div x-show="view==='dashboard'">
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <template x-for="s in stats()" :key="s.label">
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 md:p-4">
-            <p class="text-xs text-slate-500 mb-1" x-text="s.label"></p>
-            <p class="text-2xl font-bold text-white" x-text="s.value"></p>
-            <p class="text-xs mt-1" :class="s.color" x-text="s.sub"></p>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-5">
+      <template x-for="fase in fases" :key="fase">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-semibold text-white truncate pr-2" x-text="fase"></h3>
+            <span class="text-xs text-slate-500 shrink-0" x-text="tasks.filter(t=>t.mes===fase).length+' tarefas'"></span>
           </div>
-        </template>
-      </div>
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-5">
-        <template x-for="fase in fases" :key="fase">
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-            <div class="flex items-center justify-between mb-2">
-              <h3 class="text-sm font-semibold text-white truncate pr-2" x-text="fase"></h3>
-              <span class="text-xs text-slate-500 shrink-0" x-text="tasks.filter(t=>t.mes===fase).length+' tarefas'"></span>
-            </div>
-            <div class="w-full bg-slate-800 rounded-full h-1.5 mb-3">
-              <div class="h-1.5 rounded-full bg-brand-600 transition-all" :style="'width:'+phaseProgress(fase)+'%'"></div>
-            </div>
-            <div class="space-y-2">
-              <template x-for="t in tasks.filter(t=>t.mes===fase)" :key="t.id">
-                <div class="flex items-center gap-2">
-                  <button @click="cycleStatus(t)" :class="statusDot(t.status)" :title="t.status"></button>
-                  <span class="text-xs text-slate-300 flex-1 truncate" :class="t.status==='Concluído'?'line-through text-slate-600':''" x-text="t.tarefa"></span>
-                  <span class="text-xs px-1.5 py-0.5 rounded text-white shrink-0 opacity-80 hidden sm:inline" :class="setorBg(t.setor)" x-text="t.setor"></span>
-                </div>
-              </template>
-            </div>
+          <div class="w-full bg-slate-800 rounded-full h-1.5 mb-3">
+            <div class="h-1.5 rounded-full bg-brand-600 transition-all" :style="'width:'+phaseProgress(fase)+'%'"></div>
           </div>
-        </template>
-      </div>
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-        <h3 class="text-sm font-semibold text-white mb-3">Próximas Reuniões · Ter & Qui 20:30</h3>
-        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-          <template x-for="r in allMeetings.slice(0,6)" :key="r.key">
-            <button @click="view='reunioes'; openAta(r)" class="rounded-lg p-2 text-center border transition-colors hover:opacity-80" :class="r.tipo==='Alinhamento'?'bg-brand-600/8 border-brand-600/30':'bg-amber-500/8 border-amber-500/30'">
-              <p class="text-xs font-bold" :class="r.tipo==='Alinhamento'?'text-brand-400':'text-amber-400'" x-text="r.diaSemana"></p>
-              <p class="text-sm font-semibold text-white mt-0.5" x-text="r.data"></p>
-              <p class="text-xs text-slate-500 hidden sm:block" x-text="r.tipo"></p>
-            </button>
-          </template>
-        </div>
-      </div>
-    </div>
-
-    <!-- ===== GANTT ===== -->
-    <div x-show="view==='gantt'">
-      <p class="text-xs text-slate-500 mb-3 md:hidden">← Deslize para ver o cronograma completo</p>
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 md:p-4 overflow-x-auto">
-        <div style="min-width:700px">
-          <div class="flex mb-2">
-            <div style="width:180px" class="shrink-0"></div>
-            <div class="flex-1 grid grid-cols-3">
-              <div class="text-xs font-bold text-indigo-400 border-l border-slate-700 pl-2 py-1 truncate">Mês 1 — Consolidação</div>
-              <div class="text-xs font-bold text-amber-400 border-l border-slate-700 pl-2 py-1 truncate">Mês 2 — Ativação</div>
-              <div class="text-xs font-bold text-emerald-400 border-l border-slate-700 pl-2 py-1 truncate">Mês 3 — Crescimento</div>
-            </div>
-          </div>
-          <template x-for="t in tasks" :key="t.id">
-            <div class="flex items-center mb-1.5 group">
-              <div style="width:180px" class="shrink-0 pr-2">
-                <p class="text-xs text-slate-300 truncate" x-text="t.tarefa"></p>
-                <p class="text-xs text-slate-600 truncate" x-text="t.responsavel"></p>
+          <div class="space-y-2">
+            <template x-for="t in tasks.filter(t=>t.mes===fase)" :key="t.id">
+              <div class="flex items-center gap-2">
+                <button @click="cycleStatus(t)" :class="statusDot(t.status)" :title="t.status"></button>
+                <span class="text-xs text-slate-300 flex-1 truncate" :class="t.status==='Concluído'?'line-through text-slate-600':''" x-text="t.tarefa"></span>
+                <span class="text-xs px-1.5 py-0.5 rounded text-white shrink-0 opacity-80 hidden sm:inline" :class="setorBg(t.setor)" x-text="t.setor"></span>
               </div>
-              <div class="flex-1 relative h-5 bg-slate-800/60 rounded">
-                <div class="absolute h-full rounded cursor-pointer transition-all opacity-75 group-hover:opacity-100"
-                     :style="ganttBar(t)" :class="setorBg(t.setor)+' '+(t.status==='Concluído'?'opacity-30':'')"
-                     :title="t.tarefa+' · '+t.inicio+' → '+t.fim+' ['+t.status+']'">
-                  <span x-show="t.status==='Concluído'" class="absolute inset-0 flex items-center justify-center text-white/60 text-xs">✓</span>
-                </div>
-              </div>
-            </div>
-          </template>
-          <div class="flex flex-wrap gap-2 mt-4 pt-3 border-t border-slate-800">
-            <template x-for="s in setores" :key="s">
-              <span class="flex items-center gap-1.5 text-xs text-slate-400">
-                <span class="w-3 h-3 rounded-sm inline-block" :class="setorBg(s)"></span>
-                <span x-text="s"></span>
-              </span>
             </template>
           </div>
         </div>
+      </template>
+    </div>
+    <!-- Mini Kanban no Dashboard -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <template x-for="col in kanbanCols" :key="col.id">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 cursor-pointer hover:border-slate-600 transition-colors" @click="view='kanban'">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="w-2 h-2 rounded-full" :class="col.dot"></span>
+            <p class="text-xs text-slate-400 truncate" x-text="col.label"></p>
+          </div>
+          <p class="text-xl font-bold text-white" x-text="deals.filter(d=>d.coluna===col.id).length"></p>
+          <p class="text-xs text-slate-600 mt-0.5" x-text="'R$ '+dealsTotalCol(col.id)"></p>
+        </div>
+      </template>
+    </div>
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+      <h3 class="text-sm font-semibold text-white mb-3">Próximas Reuniões · Ter &amp; Qui 20:30</h3>
+      <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+        <template x-for="r in allMeetings.slice(0,6)" :key="r.key">
+          <button @click="view='reunioes';reuniaoTab='calendario';openAta(r)" class="rounded-lg p-2 text-center border transition-colors hover:opacity-80" :class="r.tipo==='Alinhamento'?'bg-brand-600/8 border-brand-600/30':'bg-amber-500/8 border-amber-500/30'">
+            <p class="text-xs font-bold" :class="r.tipo==='Alinhamento'?'text-brand-400':'text-amber-400'" x-text="r.diaSemana"></p>
+            <p class="text-sm font-semibold text-white mt-0.5" x-text="r.data"></p>
+            <p class="text-xs text-slate-500 hidden sm:block" x-text="r.tipo"></p>
+          </button>
+        </template>
       </div>
     </div>
+  </div>
 
-    <!-- ===== TAREFAS ===== -->
-    <div x-show="view==='tasks'">
-      <div class="flex gap-2 mb-4 flex-wrap">
-        <select x-model="filterMes" class="bg-slate-900 border border-slate-800 text-xs text-slate-300 px-2.5 py-2 rounded-lg focus:outline-none flex-1 min-w-0">
-          <option value="">Todas as fases</option>
-          <template x-for="f in fases" :key="f"><option x-text="f"></option></template>
-        </select>
-        <select x-model="filterSetor" class="bg-slate-900 border border-slate-800 text-xs text-slate-300 px-2.5 py-2 rounded-lg focus:outline-none flex-1 min-w-0">
-          <option value="">Todos setores</option>
-          <template x-for="s in setores" :key="s"><option x-text="s"></option></template>
-        </select>
-        <select x-model="filterStatus" class="bg-slate-900 border border-slate-800 text-xs text-slate-300 px-2.5 py-2 rounded-lg focus:outline-none flex-1 min-w-0">
-          <option value="">Todos status</option>
-          <option>A fazer</option><option>Em andamento</option><option>Concluído</option>
-        </select>
-        <input x-model="filterSearch" placeholder="Buscar…" class="bg-slate-900 border border-slate-800 text-xs text-slate-300 px-2.5 py-2 rounded-lg focus:outline-none w-full sm:flex-1" />
+  <!-- ===== KANBAN CRM ===== -->
+  <div x-show="view==='kanban'">
+    <!-- Métricas rápidas -->
+    <div class="flex gap-3 mb-5 overflow-x-auto pb-1">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 shrink-0">
+        <p class="text-xs text-slate-500">Total pipeline</p>
+        <p class="text-xl font-bold text-white mt-0.5" x-text="'R$ '+dealsTotal()"></p>
       </div>
-      <!-- Mobile cards -->
-      <div class="md:hidden space-y-2">
-        <template x-for="t in filteredTasks()" :key="t.id">
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-            <div class="flex items-start justify-between gap-2 mb-2">
-              <div class="flex items-start gap-2 flex-1 min-w-0">
-                <button @click="cycleStatus(t)" :class="statusDot(t.status)" class="mt-0.5 shrink-0"></button>
-                <p class="text-sm text-slate-200 leading-snug" :class="t.status==='Concluído'?'line-through text-slate-500':''" x-text="t.tarefa"></p>
-              </div>
-              <div class="flex gap-2 shrink-0">
-                <button @click="editTask(t)" class="text-slate-500 hover:text-brand-400 transition-colors text-base">✏</button>
-                <button @click="deleteTask(t.id)" class="text-slate-500 hover:text-red-400 transition-colors text-base">🗑</button>
-              </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 shrink-0">
+        <p class="text-xs text-slate-500">Negociações ativas</p>
+        <p class="text-xl font-bold text-amber-400 mt-0.5" x-text="deals.length"></p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 shrink-0">
+        <p class="text-xs text-slate-500">Em Identidade Visual</p>
+        <p class="text-xl font-bold text-violet-400 mt-0.5" x-text="deals.filter(d=>d.coluna==='identidade_visual').length"></p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 shrink-0">
+        <p class="text-xs text-slate-500">Serviços Gerais</p>
+        <p class="text-xl font-bold text-emerald-400 mt-0.5" x-text="deals.filter(d=>d.coluna==='servicos_gerais').length"></p>
+      </div>
+    </div>
+    <!-- Board -->
+    <div class="flex gap-3 overflow-x-auto pb-4" style="min-height:calc(100vh - 290px)">
+      <template x-for="col in kanbanCols" :key="col.id">
+        <div class="flex flex-col shrink-0 w-72">
+          <!-- Header coluna -->
+          <div class="flex items-center justify-between px-3 py-2.5 rounded-t-xl" :class="col.headerBg">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full" :class="col.dot"></span>
+              <span class="text-sm font-semibold text-white" x-text="col.label"></span>
+              <span class="bg-black/20 text-white text-xs px-1.5 py-0.5 rounded-full font-medium" x-text="deals.filter(d=>d.coluna===col.id).length"></span>
             </div>
-            <div class="flex flex-wrap gap-1.5 items-center">
-              <span class="text-xs px-2 py-0.5 rounded-full text-white" :class="setorBg(t.setor)" x-text="t.setor"></span>
-              <span class="text-xs text-slate-500" x-text="t.responsavel"></span>
-              <span class="text-xs text-slate-600 ml-auto" x-text="t.inicio+' → '+t.fim"></span>
-            </div>
-            <div class="mt-2">
-              <select @change="updateStatus(t,$event.target.value)" class="bg-slate-800 border border-slate-700 text-xs rounded px-2 py-1 w-full focus:outline-none" :class="statusColor(t.status)">
-                <option :selected="t.status==='A fazer'">A fazer</option>
-                <option :selected="t.status==='Em andamento'">Em andamento</option>
-                <option :selected="t.status==='Concluído'">Concluído</option>
-              </select>
-            </div>
-            <p x-show="t.obs" class="text-xs text-slate-500 mt-2" x-text="t.obs"></p>
+            <button @click="openNewDeal(col.id)" class="text-white/60 hover:text-white text-xl leading-none transition-colors" title="Novo card">+</button>
           </div>
-        </template>
-        <div x-show="filteredTasks().length===0" class="text-center text-slate-600 text-sm py-12">Nenhuma tarefa encontrada</div>
-      </div>
-      <!-- Desktop table -->
-      <div class="hidden md:block bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-        <table class="w-full text-sm">
-          <thead><tr class="border-b border-slate-800 text-xs text-slate-500 uppercase tracking-wide">
-            <th class="px-4 py-3 text-left">Tarefa</th><th class="px-4 py-3 text-left">Setor</th>
-            <th class="px-4 py-3 text-left">Responsável</th><th class="px-4 py-3 text-left">Início</th>
-            <th class="px-4 py-3 text-left">Fim</th><th class="px-4 py-3 text-left">Status</th>
-            <th class="px-4 py-3 text-left">Ações</th>
-          </tr></thead>
-          <tbody>
-            <template x-for="t in filteredTasks()" :key="t.id">
-              <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
-                <td class="px-4 py-2.5">
-                  <p class="text-slate-200 text-sm" :class="t.status==='Concluído'?'line-through text-slate-500':''" x-text="t.tarefa"></p>
-                  <p x-show="t.obs" class="text-xs text-slate-500 mt-0.5" x-text="t.obs"></p>
-                </td>
-                <td class="px-4 py-2.5"><span class="text-xs px-2 py-0.5 rounded-full text-white" :class="setorBg(t.setor)" x-text="t.setor"></span></td>
-                <td class="px-4 py-2.5 text-slate-400 text-xs" x-text="t.responsavel"></td>
-                <td class="px-4 py-2.5 text-slate-400 text-xs" x-text="t.inicio"></td>
-                <td class="px-4 py-2.5 text-slate-400 text-xs" x-text="t.fim"></td>
-                <td class="px-4 py-2.5">
-                  <select @change="updateStatus(t,$event.target.value)" class="bg-slate-800 border border-slate-700 text-xs rounded px-2 py-1 focus:outline-none" :class="statusColor(t.status)">
-                    <option :selected="t.status==='A fazer'">A fazer</option>
-                    <option :selected="t.status==='Em andamento'">Em andamento</option>
-                    <option :selected="t.status==='Concluído'">Concluído</option>
-                  </select>
-                </td>
-                <td class="px-4 py-2.5">
-                  <div class="flex gap-2">
-                    <button @click="editTask(t)" class="text-xs text-slate-500 hover:text-brand-400 transition-colors">✏</button>
-                    <button @click="deleteTask(t.id)" class="text-xs text-slate-500 hover:text-red-400 transition-colors">🗑</button>
+          <!-- Coluna droppable -->
+          <div class="kanban-col flex-1 rounded-b-xl p-2 space-y-2" :class="col.colBg"
+               @dragover.prevent="$event.dataTransfer.dropEffect='move'"
+               @dragenter.prevent="$el.classList.add('drag-over')"
+               @dragleave="if(!$el.contains($event.relatedTarget))$el.classList.remove('drag-over')"
+               @drop.prevent="onDrop($event,col.id);$el.classList.remove('drag-over')">
+            <template x-for="deal in dealsInCol(col.id)" :key="deal.id">
+              <div class="deal-card bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-sm hover:border-slate-600 hover:shadow-lg transition-all"
+                   draggable="true"
+                   @dragstart="onDragStart($event,deal.id)"
+                   @dragend="$el.classList.remove('dragging')">
+                <!-- Topo: prioridade + ações -->
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="prioClass(deal.prioridade)" x-text="deal.prioridade||'Média'"></span>
+                  <div class="flex items-center gap-1.5">
+                    <span x-show="deal.tags&&deal.tags.length" class="text-slate-600 text-xs" x-text="'🏷 '+deal.tags.length"></span>
+                    <button @click="openEditDeal(deal)" class="text-slate-600 hover:text-brand-400 transition-colors text-sm">✏</button>
+                    <button @click="deleteDeal(deal.id)" class="text-slate-600 hover:text-red-400 transition-colors text-sm">✕</button>
                   </div>
-                </td>
-              </tr>
+                </div>
+                <!-- Nome cliente -->
+                <p class="text-sm font-semibold text-white leading-snug mb-1" x-text="deal.cliente"></p>
+                <!-- Serviço -->
+                <p class="text-xs text-slate-400 truncate mb-2" x-text="deal.servico||'Serviço não definido'"></p>
+                <!-- Valor + responsável -->
+                <div class="flex items-center justify-between">
+                  <span class="text-sm font-bold text-emerald-400" x-text="deal.valor?'R$ '+Number(deal.valor).toLocaleString('pt-BR'):'—'"></span>
+                  <span class="text-xs text-slate-500" x-text="deal.responsavel"></span>
+                </div>
+                <!-- Footer -->
+                <div class="mt-2 pt-2 border-t border-slate-800 flex items-center justify-between">
+                  <span class="text-xs text-slate-600" x-text="deal.ultimoContato?'📅 '+deal.ultimoContato:'Sem contato'"></span>
+                  <span x-show="deal.obs" class="text-slate-700 text-xs" title="Tem observações">📝</span>
+                </div>
+                <!-- Tags -->
+                <div x-show="deal.tags&&deal.tags.length" class="flex flex-wrap gap-1 mt-2">
+                  <template x-for="tag in (deal.tags||[])" :key="tag">
+                    <span class="text-xs bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded" x-text="tag"></span>
+                  </template>
+                </div>
+              </div>
             </template>
-            <tr x-show="filteredTasks().length===0">
-              <td colspan="7" class="px-4 py-8 text-center text-slate-600 text-sm">Nenhuma tarefa encontrada</td>
+            <!-- Empty state -->
+            <div x-show="dealsInCol(col.id).length===0" class="text-center py-10 text-slate-700 select-none">
+              <p class="text-3xl mb-1">🗂</p>
+              <p class="text-xs">Arraste cards aqui</p>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- ===== GANTT ===== -->
+  <div x-show="view==='gantt'">
+    <p class="text-xs text-slate-500 mb-3 md:hidden">← Deslize para ver o cronograma completo</p>
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 md:p-4 overflow-x-auto">
+      <div style="min-width:700px">
+        <div class="flex mb-2">
+          <div style="width:180px" class="shrink-0"></div>
+          <div class="flex-1 grid grid-cols-3">
+            <div class="text-xs font-bold text-indigo-400 border-l border-slate-700 pl-2 py-1 truncate">Mês 1 — Consolidação</div>
+            <div class="text-xs font-bold text-amber-400 border-l border-slate-700 pl-2 py-1 truncate">Mês 2 — Ativação</div>
+            <div class="text-xs font-bold text-emerald-400 border-l border-slate-700 pl-2 py-1 truncate">Mês 3 — Crescimento</div>
+          </div>
+        </div>
+        <template x-for="t in tasks" :key="t.id">
+          <div class="flex items-center mb-1.5 group">
+            <div style="width:180px" class="shrink-0 pr-2">
+              <p class="text-xs text-slate-300 truncate" x-text="t.tarefa"></p>
+              <p class="text-xs text-slate-600 truncate" x-text="t.responsavel"></p>
+            </div>
+            <div class="flex-1 relative h-5 bg-slate-800/60 rounded">
+              <div class="absolute h-full rounded cursor-pointer transition-all opacity-75 group-hover:opacity-100"
+                   :style="ganttBar(t)" :class="setorBg(t.setor)+' '+(t.status==='Concluído'?'opacity-30':'')"
+                   :title="t.tarefa+' · '+t.inicio+' → '+t.fim+' ['+t.status+']'">
+                <span x-show="t.status==='Concluído'" class="absolute inset-0 flex items-center justify-center text-white/60 text-xs">✓</span>
+              </div>
+            </div>
+          </div>
+        </template>
+        <div class="flex flex-wrap gap-2 mt-4 pt-3 border-t border-slate-800">
+          <template x-for="s in setores" :key="s">
+            <span class="flex items-center gap-1.5 text-xs text-slate-400">
+              <span class="w-3 h-3 rounded-sm inline-block" :class="setorBg(s)"></span><span x-text="s"></span>
+            </span>
+          </template>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAREFAS ===== -->
+  <div x-show="view==='tasks'">
+    <div class="flex gap-2 mb-4 flex-wrap">
+      <select x-model="filterMes" class="bg-slate-900 border border-slate-800 text-xs text-slate-300 px-2.5 py-2 rounded-lg focus:outline-none flex-1 min-w-0">
+        <option value="">Todas as fases</option>
+        <template x-for="f in fases" :key="f"><option x-text="f"></option></template>
+      </select>
+      <select x-model="filterSetor" class="bg-slate-900 border border-slate-800 text-xs text-slate-300 px-2.5 py-2 rounded-lg focus:outline-none flex-1 min-w-0">
+        <option value="">Todos setores</option>
+        <template x-for="s in setores" :key="s"><option x-text="s"></option></template>
+      </select>
+      <select x-model="filterStatus" class="bg-slate-900 border border-slate-800 text-xs text-slate-300 px-2.5 py-2 rounded-lg focus:outline-none flex-1 min-w-0">
+        <option value="">Todos status</option>
+        <option>A fazer</option><option>Em andamento</option><option>Concluído</option>
+      </select>
+      <input x-model="filterSearch" placeholder="Buscar…" class="bg-slate-900 border border-slate-800 text-xs text-slate-300 px-2.5 py-2 rounded-lg focus:outline-none w-full sm:flex-1" />
+    </div>
+    <div class="md:hidden space-y-2">
+      <template x-for="t in filteredTasks()" :key="t.id">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div class="flex items-start gap-2 flex-1 min-w-0">
+              <button @click="cycleStatus(t)" :class="statusDot(t.status)" class="mt-0.5 shrink-0"></button>
+              <p class="text-sm text-slate-200 leading-snug" :class="t.status==='Concluído'?'line-through text-slate-500':''" x-text="t.tarefa"></p>
+            </div>
+            <div class="flex gap-2 shrink-0">
+              <button @click="editTask(t)" class="text-slate-500 hover:text-brand-400 transition-colors text-base">✏</button>
+              <button @click="deleteTask(t.id)" class="text-slate-500 hover:text-red-400 transition-colors text-base">🗑</button>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-1.5 items-center">
+            <span class="text-xs px-2 py-0.5 rounded-full text-white" :class="setorBg(t.setor)" x-text="t.setor"></span>
+            <span class="text-xs text-slate-500" x-text="t.responsavel"></span>
+            <span class="text-xs text-slate-600 ml-auto" x-text="t.inicio+' → '+t.fim"></span>
+          </div>
+          <div class="mt-2">
+            <select @change="updateStatus(t,$event.target.value)" class="bg-slate-800 border border-slate-700 text-xs rounded px-2 py-1 w-full focus:outline-none" :class="statusColor(t.status)">
+              <option :selected="t.status==='A fazer'">A fazer</option>
+              <option :selected="t.status==='Em andamento'">Em andamento</option>
+              <option :selected="t.status==='Concluído'">Concluído</option>
+            </select>
+          </div>
+          <p x-show="t.obs" class="text-xs text-slate-500 mt-2" x-text="t.obs"></p>
+        </div>
+      </template>
+      <div x-show="filteredTasks().length===0" class="text-center text-slate-600 text-sm py-12">Nenhuma tarefa encontrada</div>
+    </div>
+    <div class="hidden md:block bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <table class="w-full text-sm">
+        <thead><tr class="border-b border-slate-800 text-xs text-slate-500 uppercase tracking-wide">
+          <th class="px-4 py-3 text-left">Tarefa</th><th class="px-4 py-3 text-left">Setor</th>
+          <th class="px-4 py-3 text-left">Responsável</th><th class="px-4 py-3 text-left">Início</th>
+          <th class="px-4 py-3 text-left">Fim</th><th class="px-4 py-3 text-left">Status</th>
+          <th class="px-4 py-3 text-left">Ações</th>
+        </tr></thead>
+        <tbody>
+          <template x-for="t in filteredTasks()" :key="t.id">
+            <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+              <td class="px-4 py-2.5">
+                <p class="text-slate-200 text-sm" :class="t.status==='Concluído'?'line-through text-slate-500':''" x-text="t.tarefa"></p>
+                <p x-show="t.obs" class="text-xs text-slate-500 mt-0.5" x-text="t.obs"></p>
+              </td>
+              <td class="px-4 py-2.5"><span class="text-xs px-2 py-0.5 rounded-full text-white" :class="setorBg(t.setor)" x-text="t.setor"></span></td>
+              <td class="px-4 py-2.5 text-slate-400 text-xs" x-text="t.responsavel"></td>
+              <td class="px-4 py-2.5 text-slate-400 text-xs" x-text="t.inicio"></td>
+              <td class="px-4 py-2.5 text-slate-400 text-xs" x-text="t.fim"></td>
+              <td class="px-4 py-2.5">
+                <select @change="updateStatus(t,$event.target.value)" class="bg-slate-800 border border-slate-700 text-xs rounded px-2 py-1 focus:outline-none" :class="statusColor(t.status)">
+                  <option :selected="t.status==='A fazer'">A fazer</option>
+                  <option :selected="t.status==='Em andamento'">Em andamento</option>
+                  <option :selected="t.status==='Concluído'">Concluído</option>
+                </select>
+              </td>
+              <td class="px-4 py-2.5">
+                <div class="flex gap-2">
+                  <button @click="editTask(t)" class="text-xs text-slate-500 hover:text-brand-400 transition-colors">✏</button>
+                  <button @click="deleteTask(t.id)" class="text-xs text-slate-500 hover:text-red-400 transition-colors">🗑</button>
+                </div>
+              </td>
             </tr>
-          </tbody>
-        </table>
+          </template>
+          <tr x-show="filteredTasks().length===0">
+            <td colspan="7" class="px-4 py-8 text-center text-slate-600 text-sm">Nenhuma tarefa encontrada</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== REUNIÕES ===== -->
+  <div x-show="view==='reunioes'">
+    <div class="flex gap-1 mb-5 bg-slate-900 border border-slate-800 rounded-xl p-1 w-fit">
+      <button @click="reuniaoTab='pautas'" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors" :class="reuniaoTab==='pautas'?'bg-brand-600 text-white':'text-slate-400 hover:text-white'">Pautas</button>
+      <button @click="reuniaoTab='historico'" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors" :class="reuniaoTab==='historico'?'bg-brand-600 text-white':'text-slate-400 hover:text-white'">
+        Histórico
+        <span x-show="atasCount()>0" class="ml-1.5 bg-emerald-500 text-white text-xs px-1.5 py-0.5 rounded-full" x-text="atasCount()"></span>
+      </button>
+      <button @click="reuniaoTab='calendario'" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors" :class="reuniaoTab==='calendario'?'bg-brand-600 text-white':'text-slate-400 hover:text-white'">Calendário</button>
+    </div>
+
+    <!-- PAUTAS -->
+    <div x-show="reuniaoTab==='pautas'">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <h3 class="font-semibold text-white mb-4 flex items-center gap-2 text-sm">🟣 Terça-feira · 20:30 — Alinhamento</h3>
+          <div class="space-y-3">
+            <template x-for="item in meetingTerca" :key="item.setor">
+              <div class="flex gap-3 items-start">
+                <span class="text-xs text-brand-400 font-mono w-12 shrink-0 pt-0.5" x-text="item.tempo"></span>
+                <div>
+                  <p class="text-sm font-medium text-white" x-text="item.setor"></p>
+                  <p class="text-xs text-slate-400 mt-0.5" x-text="item.pauta"></p>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <h3 class="font-semibold text-white mb-4 flex items-center gap-2 text-sm">🟡 Quinta-feira · 20:30 — Revisão</h3>
+          <div class="space-y-3">
+            <template x-for="item in meetingQuinta" :key="item.setor">
+              <div class="flex gap-3 items-start">
+                <span class="text-xs text-amber-400 font-mono w-12 shrink-0 pt-0.5" x-text="item.tempo"></span>
+                <div>
+                  <p class="text-sm font-medium text-white" x-text="item.setor"></p>
+                  <p class="text-xs text-slate-400 mt-0.5" x-text="item.pauta"></p>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- ===== REUNIÕES ===== -->
-    <div x-show="view==='reunioes'">
-
-      <!-- Sub-tabs -->
-      <div class="flex gap-1 mb-5 bg-slate-900 border border-slate-800 rounded-xl p-1 w-fit">
-        <button @click="reuniaoTab='pautas'"  class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors" :class="reuniaoTab==='pautas'?'bg-brand-600 text-white':'text-slate-400 hover:text-white'">Pautas</button>
-        <button @click="reuniaoTab='historico'" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors" :class="reuniaoTab==='historico'?'bg-brand-600 text-white':'text-slate-400 hover:text-white'">
-          Histórico
-          <span x-show="atasCount()>0" class="ml-1.5 bg-emerald-500 text-white text-xs px-1.5 py-0.5 rounded-full" x-text="atasCount()"></span>
-        </button>
-        <button @click="reuniaoTab='calendario'" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors" :class="reuniaoTab==='calendario'?'bg-brand-600 text-white':'text-slate-400 hover:text-white'">Calendário</button>
-      </div>
-
-      <!-- PAUTAS -->
-      <div x-show="reuniaoTab==='pautas'">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-            <h3 class="font-semibold text-white mb-4 flex items-center gap-2 text-sm">🟣 Terça-feira · 20:30 — Alinhamento</h3>
-            <div class="space-y-3">
-              <template x-for="item in meetingTerca" :key="item.setor">
-                <div class="flex gap-3 items-start">
-                  <span class="text-xs text-brand-400 font-mono w-12 shrink-0 pt-0.5" x-text="item.tempo"></span>
-                  <div>
-                    <p class="text-sm font-medium text-white" x-text="item.setor"></p>
-                    <p class="text-xs text-slate-400 mt-0.5" x-text="item.pauta"></p>
-                  </div>
-                </div>
-              </template>
-            </div>
-          </div>
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-            <h3 class="font-semibold text-white mb-4 flex items-center gap-2 text-sm">🟡 Quinta-feira · 20:30 — Revisão</h3>
-            <div class="space-y-3">
-              <template x-for="item in meetingQuinta" :key="item.setor">
-                <div class="flex gap-3 items-start">
-                  <span class="text-xs text-amber-400 font-mono w-12 shrink-0 pt-0.5" x-text="item.tempo"></span>
-                  <div>
-                    <p class="text-sm font-medium text-white" x-text="item.setor"></p>
-                    <p class="text-xs text-slate-400 mt-0.5" x-text="item.pauta"></p>
-                  </div>
-                </div>
-              </template>
-            </div>
-          </div>
+    <!-- HISTÓRICO -->
+    <div x-show="reuniaoTab==='historico'">
+      <div class="grid grid-cols-3 gap-3 mb-5">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
+          <p class="text-2xl font-bold text-white" x-text="atasCount()"></p>
+          <p class="text-xs text-slate-500 mt-0.5">Atas registradas</p>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
+          <p class="text-2xl font-bold text-emerald-400" x-text="atas.filter(a=>a.status==='Realizada').length"></p>
+          <p class="text-xs text-slate-500 mt-0.5">Realizadas</p>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
+          <p class="text-2xl font-bold text-red-400" x-text="atas.filter(a=>a.status==='Cancelada').length"></p>
+          <p class="text-xs text-slate-500 mt-0.5">Canceladas</p>
         </div>
       </div>
-
-      <!-- HISTÓRICO DE ATAS -->
-      <div x-show="reuniaoTab==='historico'">
-        <!-- Stats rápidas -->
-        <div class="grid grid-cols-3 gap-3 mb-5">
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
-            <p class="text-2xl font-bold text-white" x-text="atasCount()"></p>
-            <p class="text-xs text-slate-500 mt-0.5">Atas registradas</p>
-          </div>
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
-            <p class="text-2xl font-bold text-emerald-400" x-text="atas.filter(a=>a.status==='Realizada').length"></p>
-            <p class="text-xs text-slate-500 mt-0.5">Realizadas</p>
-          </div>
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
-            <p class="text-2xl font-bold text-red-400" x-text="atas.filter(a=>a.status==='Cancelada').length"></p>
-            <p class="text-xs text-slate-500 mt-0.5">Canceladas</p>
-          </div>
-        </div>
-
-        <!-- Lista de atas com ata registrada (ou todas) -->
-        <div x-show="atasCount()===0" class="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center">
-          <p class="text-2xl mb-2">📓</p>
-          <p class="text-slate-400 text-sm">Nenhuma ata registrada ainda.</p>
-          <p class="text-slate-600 text-xs mt-1">Clique em uma reunião no Calendário para registrar a ata.</p>
-        </div>
-
-        <div class="space-y-3">
-          <template x-for="ata in atasOrdenadas()" :key="ata.key">
-            <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-              <!-- Header da ata -->
-              <div class="flex items-center gap-3 p-4 cursor-pointer" @click="ata._open=!ata._open">
-                <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-base"
-                     :class="ata.tipo==='Alinhamento'?'bg-brand-600/20':'bg-amber-500/20'">
-                  <span x-text="ata.tipo==='Alinhamento'?'🟣':'🟡'"></span>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <p class="text-sm font-semibold text-white" x-text="ata.diaSemana+', '+ata.data"></p>
-                    <span class="text-xs px-2 py-0.5 rounded-full font-medium"
-                      :class="ata.status==='Realizada'?'bg-emerald-500/15 text-emerald-400':ata.status==='Cancelada'?'bg-red-500/15 text-red-400':'bg-slate-700 text-slate-400'"
-                      x-text="ata.status||'Pendente'"></span>
-                    <span class="text-xs text-slate-500" x-text="ata.tipo"></span>
-                  </div>
-                  <p x-show="ata.presentes" class="text-xs text-slate-500 mt-0.5 truncate" x-text="'👤 '+ata.presentes"></p>
-                </div>
-                <div class="flex items-center gap-2 shrink-0">
-                  <button @click.stop="openAta(ata)" class="text-xs text-slate-500 hover:text-brand-400 transition-colors px-2 py-1 rounded hover:bg-slate-800">✏ Editar</button>
-                  <span class="text-slate-600 text-sm" x-text="ata._open?'▲':'▼'"></span>
-                </div>
+      <div x-show="atasCount()===0" class="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center">
+        <p class="text-2xl mb-2">📓</p>
+        <p class="text-slate-400 text-sm">Nenhuma ata registrada ainda.</p>
+        <p class="text-slate-600 text-xs mt-1">Vá em Calendário e clique em uma reunião para registrar.</p>
+      </div>
+      <div class="space-y-3">
+        <template x-for="ata in atasOrdenadas()" :key="ata.key">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <div class="flex items-center gap-3 p-4 cursor-pointer" @click="ata._open=!ata._open">
+              <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-base" :class="ata.tipo==='Alinhamento'?'bg-brand-600/20':'bg-amber-500/20'">
+                <span x-text="ata.tipo==='Alinhamento'?'🟣':'🟡'"></span>
               </div>
-              <!-- Corpo expandido -->
-              <div x-show="ata._open" x-transition class="px-4 pb-4 border-t border-slate-800">
-                <div x-show="ata.ata" class="mt-3">
-                  <p class="text-xs text-slate-500 mb-1.5 uppercase tracking-wide font-medium">Ata / Anotações</p>
-                  <div class="bg-slate-800/60 rounded-lg p-3 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed" x-text="ata.ata"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <p class="text-sm font-semibold text-white" x-text="ata.diaSemana+', '+ata.data"></p>
+                  <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+                    :class="ata.status==='Realizada'?'bg-emerald-500/15 text-emerald-400':ata.status==='Cancelada'?'bg-red-500/15 text-red-400':'bg-slate-700 text-slate-400'"
+                    x-text="ata.status||'Pendente'"></span>
+                  <span class="text-xs text-slate-500" x-text="ata.tipo"></span>
                 </div>
-                <div x-show="ata.decisoes" class="mt-3">
-                  <p class="text-xs text-slate-500 mb-1.5 uppercase tracking-wide font-medium">Decisões tomadas</p>
-                  <div class="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed" x-text="ata.decisoes"></div>
-                </div>
-                <div x-show="ata.proximos" class="mt-3">
-                  <p class="text-xs text-slate-500 mb-1.5 uppercase tracking-wide font-medium">Próximos passos</p>
-                  <div class="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed" x-text="ata.proximos"></div>
-                </div>
-                <div x-show="!ata.ata&&!ata.decisoes&&!ata.proximos" class="mt-3 text-slate-600 text-xs text-center py-2">Nenhuma nota registrada. Clique em Editar para adicionar.</div>
+                <p x-show="ata.presentes" class="text-xs text-slate-500 mt-0.5 truncate" x-text="'👤 '+ata.presentes"></p>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <button @click.stop="openAta(ata)" class="text-xs text-slate-500 hover:text-brand-400 transition-colors px-2 py-1 rounded hover:bg-slate-800">✏ Editar</button>
+                <span class="text-slate-600 text-sm" x-text="ata._open?'▲':'▼'"></span>
               </div>
             </div>
-          </template>
-        </div>
+            <div x-show="ata._open" x-transition class="px-4 pb-4 border-t border-slate-800">
+              <div x-show="ata.ata" class="mt-3">
+                <p class="text-xs text-slate-500 mb-1.5 uppercase tracking-wide font-medium">Ata / Anotações</p>
+                <div class="bg-slate-800/60 rounded-lg p-3 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed" x-text="ata.ata"></div>
+              </div>
+              <div x-show="ata.decisoes" class="mt-3">
+                <p class="text-xs text-slate-500 mb-1.5 uppercase tracking-wide font-medium">Decisões tomadas</p>
+                <div class="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed" x-text="ata.decisoes"></div>
+              </div>
+              <div x-show="ata.proximos" class="mt-3">
+                <p class="text-xs text-slate-500 mb-1.5 uppercase tracking-wide font-medium">Próximos passos</p>
+                <div class="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed" x-text="ata.proximos"></div>
+              </div>
+              <div x-show="!ata.ata&&!ata.decisoes&&!ata.proximos" class="mt-3 text-slate-600 text-xs text-center py-2">Nenhuma nota. Clique em Editar para adicionar.</div>
+            </div>
+          </div>
+        </template>
       </div>
-
-      <!-- CALENDÁRIO -->
-      <div x-show="reuniaoTab==='calendario'">
-        <p class="text-xs text-slate-500 mb-3">Clique em qualquer reunião para registrar ou editar a ata.</p>
-        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-2">
-          <template x-for="r in allMeetings" :key="r.key">
-            <button @click="openAta(r)"
-              class="border rounded-xl p-2.5 text-center transition-all hover:scale-105 relative"
-              :class="ataFor(r.key)?(
-                ataFor(r.key).status==='Realizada'?'border-emerald-500/50 bg-emerald-500/8':
-                ataFor(r.key).status==='Cancelada'?'border-red-500/30 bg-red-500/5':
-                r.tipo==='Alinhamento'?'border-brand-600/40 bg-brand-600/5':'border-amber-500/40 bg-amber-500/5'
-              ):r.tipo==='Alinhamento'?'border-slate-700 bg-slate-900':'border-slate-700 bg-slate-900'">
-              <!-- Badge se tem ata -->
-              <span x-show="ataFor(r.key)" class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full"
-                :class="ataFor(r.key)?.status==='Realizada'?'bg-emerald-500':ataFor(r.key)?.status==='Cancelada'?'bg-red-500':'bg-amber-400'"></span>
-              <p class="text-xs font-bold" :class="r.tipo==='Alinhamento'?'text-brand-400':'text-amber-400'" x-text="r.diaSemana.slice(0,3)"></p>
-              <p class="text-sm font-semibold text-white mt-0.5" x-text="r.data"></p>
-              <p class="text-xs mt-0.5" :class="ataFor(r.key)?'text-emerald-400':'text-slate-600'" x-text="ataFor(r.key)?'✓ ata':'+ ata'"></p>
-            </button>
-          </template>
-        </div>
-        <!-- Legenda -->
-        <div class="flex flex-wrap gap-4 mt-4 text-xs text-slate-500">
-          <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>Realizada com ata</span>
-          <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400"></span>Pendente</span>
-          <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-red-500"></span>Cancelada</span>
-          <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-slate-700"></span>Sem ata</span>
-        </div>
-      </div>
-
     </div>
-  </main>
+
+    <!-- CALENDÁRIO -->
+    <div x-show="reuniaoTab==='calendario'">
+      <p class="text-xs text-slate-500 mb-3">Clique em qualquer reunião para registrar ou editar a ata.</p>
+      <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-2">
+        <template x-for="r in allMeetings" :key="r.key">
+          <button @click="openAta(r)" class="border rounded-xl p-2.5 text-center transition-all hover:scale-105 relative"
+            :class="ataFor(r.key)?(ataFor(r.key).status==='Realizada'?'border-emerald-500/50 bg-emerald-500/8':ataFor(r.key).status==='Cancelada'?'border-red-500/30 bg-red-500/5':r.tipo==='Alinhamento'?'border-brand-600/40 bg-brand-600/5':'border-amber-500/40 bg-amber-500/5'):'border-slate-700 bg-slate-900'">
+            <span x-show="ataFor(r.key)" class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full"
+              :class="ataFor(r.key)?.status==='Realizada'?'bg-emerald-500':ataFor(r.key)?.status==='Cancelada'?'bg-red-500':'bg-amber-400'"></span>
+            <p class="text-xs font-bold" :class="r.tipo==='Alinhamento'?'text-brand-400':'text-amber-400'" x-text="r.diaSemana.slice(0,3)"></p>
+            <p class="text-sm font-semibold text-white mt-0.5" x-text="r.data"></p>
+            <p class="text-xs mt-0.5" :class="ataFor(r.key)?'text-emerald-400':'text-slate-600'" x-text="ataFor(r.key)?'✓ ata':'+ ata'"></p>
+          </button>
+        </template>
+      </div>
+      <div class="flex flex-wrap gap-4 mt-4 text-xs text-slate-500">
+        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>Realizada com ata</span>
+        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400"></span>Pendente</span>
+        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-red-500"></span>Cancelada</span>
+        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-slate-700"></span>Sem ata</span>
+      </div>
+    </div>
+  </div>
+
+</main>
 </div>
 
 <!-- BOTTOM NAV mobile -->
 <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900 border-t border-slate-800 flex">
   <template x-for="nav in navItems" :key="nav.id">
-    <button @click="view=nav.id" class="flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors"
+    <button @click="view=nav.id" class="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors"
       :class="view===nav.id?'text-brand-400':'text-slate-500 hover:text-slate-300'">
-      <span class="text-xl leading-none" x-text="nav.icon"></span>
+      <span class="text-lg leading-none" x-text="nav.icon"></span>
       <span class="text-xs font-medium" x-text="nav.label"></span>
     </button>
   </template>
@@ -419,13 +503,11 @@
     <div class="flex items-center justify-between mb-4">
       <div>
         <h2 class="text-base font-bold text-white" x-text="(ataForm.diaSemana||'')+', '+ataForm.data"></h2>
-        <p class="text-xs text-slate-500 mt-0.5" x-text="ataForm.tipo+' · 20:30'"></p>
+        <p class="text-xs text-slate-500 mt-0.5" x-text="(ataForm.tipo||'')+' · 20:30'"></p>
       </div>
       <button @click="ataModal=false" class="text-slate-500 hover:text-white text-2xl leading-none w-8 h-8 flex items-center justify-center">&times;</button>
     </div>
-
     <div class="space-y-4">
-      <!-- Status + Presentes -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label class="text-xs text-slate-400 mb-1 block">Status da Reunião</label>
@@ -440,30 +522,89 @@
           <input x-model="ataForm.presentes" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Alex, Hugo, Ewerton…" />
         </div>
       </div>
-
-      <!-- Ata principal -->
       <div>
         <label class="text-xs text-slate-400 mb-1 block">Ata — Anotações gerais</label>
-        <textarea x-model="ataForm.ata" rows="5" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 resize-none leading-relaxed" placeholder="O que foi discutido? Principais pontos abordados…"></textarea>
+        <textarea x-model="ataForm.ata" rows="5" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 resize-none leading-relaxed" placeholder="O que foi discutido?…"></textarea>
       </div>
-
-      <!-- Decisões -->
       <div>
         <label class="text-xs text-amber-400 mb-1 block">⚠ Decisões tomadas</label>
-        <textarea x-model="ataForm.decisoes" rows="3" class="w-full bg-slate-800 border border-amber-500/30 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 resize-none leading-relaxed" placeholder="Decisões importantes tomadas nesta reunião…"></textarea>
+        <textarea x-model="ataForm.decisoes" rows="3" class="w-full bg-slate-800 border border-amber-500/30 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 resize-none leading-relaxed" placeholder="Decisões importantes…"></textarea>
       </div>
-
-      <!-- Próximos passos -->
       <div>
         <label class="text-xs text-emerald-400 mb-1 block">→ Próximos passos</label>
-        <textarea x-model="ataForm.proximos" rows="3" class="w-full bg-slate-800 border border-emerald-500/30 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 resize-none leading-relaxed" placeholder="Ações definidas, responsáveis e prazos…"></textarea>
+        <textarea x-model="ataForm.proximos" rows="3" class="w-full bg-slate-800 border border-emerald-500/30 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 resize-none leading-relaxed" placeholder="Ações, responsáveis, prazos…"></textarea>
       </div>
     </div>
-
     <div class="flex gap-3 mt-5">
       <button @click="saveAta()" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-medium py-2.5 rounded-lg text-sm transition-colors">Salvar Ata</button>
       <button x-show="ataFor(ataForm.key)" @click="deleteAta()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-medium py-2.5 px-4 rounded-lg text-sm transition-colors">Excluir</button>
       <button @click="ataModal=false" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2.5 rounded-lg text-sm transition-colors">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL DEAL CRM ===== -->
+<div x-show="dealModal" @click.self="dealModal=false" class="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+  <div @click.stop class="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-xl p-5 shadow-2xl max-h-[95vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-bold text-white" x-text="dealForm.id?'Editar Negociação':'Nova Negociação'"></h2>
+      <button @click="dealModal=false" class="text-slate-500 hover:text-white text-2xl leading-none w-8 h-8 flex items-center justify-center">&times;</button>
+    </div>
+    <div class="space-y-3">
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Cliente / Empresa *</label>
+        <input x-model="dealForm.cliente" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Nome do cliente ou empresa" />
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Serviço</label>
+          <input x-model="dealForm.servico" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Ex: Manual de Marca" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Valor estimado (R$)</label>
+          <input type="number" x-model="dealForm.valor" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="0" />
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Responsável</label>
+          <input x-model="dealForm.responsavel" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Alex, Hugo…" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Prioridade</label>
+          <select x-model="dealForm.prioridade" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500">
+            <option>Alta</option><option>Média</option><option>Baixa</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Etapa do funil</label>
+          <select x-model="dealForm.coluna" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500">
+            <template x-for="col in kanbanCols" :key="col.id"><option :value="col.id" x-text="col.label"></option></template>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Último contato</label>
+          <input type="date" x-model="dealForm.ultimoContato" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" />
+        </div>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Contato (email / WhatsApp)</label>
+        <input x-model="dealForm.contato" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="email@exemplo.com ou (11) 9…" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Tags (separadas por vírgula)</label>
+        <input x-model="dealForm.tagsRaw" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Instagram, urgente, parceria…" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Observações / Histórico</label>
+        <textarea x-model="dealForm.obs" rows="3" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 resize-none" placeholder="Contexto, próximos passos, histórico de conversas…"></textarea>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-5">
+      <button @click="saveDeal()" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-medium py-2.5 rounded-lg text-sm transition-colors">Salvar</button>
+      <button @click="dealModal=false" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2.5 rounded-lg text-sm transition-colors">Cancelar</button>
     </div>
   </div>
 </div>
@@ -539,15 +680,12 @@
       <div>
         <label class="text-xs text-slate-400 mb-1 block">URL da API (Google Apps Script)</label>
         <input x-model="apiUrl" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-brand-500 font-mono" placeholder="https://script.google.com/macros/s/.../exec" />
-        <p class="text-xs text-slate-600 mt-1">Cole aqui a URL gerada na implantação do Apps Script</p>
       </div>
       <div class="bg-slate-800 rounded-lg p-3 text-xs text-slate-400 space-y-1">
         <p class="font-semibold text-slate-300">Como configurar:</p>
-        <p>1. Abra a planilha → Extensões → Apps Script</p>
-        <p>2. Cole o código do arquivo <code class="text-brand-400">api.gs</code></p>
-        <p>3. Implantar → Nova implantação → Web App</p>
-        <p>4. Executar como: <strong>Eu mesmo</strong> · Acesso: <strong>Qualquer pessoa</strong></p>
-        <p>5. Copie a URL e cole acima</p>
+        <p>1. Planilha → Extensões → Apps Script</p>
+        <p>2. Cole o código de <code class="text-brand-400">api.gs</code> e implante como Web App</p>
+        <p>3. Acesso: <strong>Qualquer pessoa</strong> · Copie a URL acima</p>
       </div>
     </div>
     <div class="flex gap-3 mt-5">
@@ -561,26 +699,34 @@
 function planner() {
   return {
     view: 'dashboard',
-    modal: false, settingsModal: false, ataModal: false,
-    editingId: null,
+    modal:false, settingsModal:false, ataModal:false, dealModal:false,
+    editingId:null,
     filterMes:'', filterSetor:'', filterStatus:'', filterSearch:'',
-    reuniaoTab: 'pautas',
-    form: {}, ataForm: {},
-    tasks: [], atas: [],
-    saving: false, apiOk: null,
-    apiUrl: localStorage.getItem('cajuna_api_url') || '',
-    fases: ['Mês 1 — Consolidação','Mês 2 — Ativação Comercial','Mês 3 — Crescimento'],
-    setores: ['Site','Comercial','Operações','Conteúdo','Jurídico','Financeiro','Experiência','Criativo','Marketing'],
+    reuniaoTab:'pautas',
+    form:{}, ataForm:{}, dealForm:{},
+    tasks:[], atas:[], deals:[],
+    saving:false, apiOk:null,
+    dragId:null,
+    apiUrl: localStorage.getItem('cajuna_api_url')||'',
+    fases:['Mês 1 — Consolidação','Mês 2 — Ativação Comercial','Mês 3 — Crescimento'],
+    setores:['Site','Comercial','Operações','Conteúdo','Jurídico','Financeiro','Experiência','Criativo','Marketing'],
     ganttStart: new Date('2026-06-23'),
     ganttEnd:   new Date('2026-09-22'),
-    allMeetings: [],
-    navItems: [
+    allMeetings:[],
+    navItems:[
       {id:'dashboard',label:'Dashboard', icon:'📊'},
+      {id:'kanban',   label:'Kanban',    icon:'🗂'},
       {id:'gantt',    label:'Cronograma',icon:'📅'},
-      {id:'tasks',   label:'Tarefas',   icon:'✅'},
-      {id:'reunioes',label:'Reuniões',  icon:'🗓'},
+      {id:'tasks',    label:'Tarefas',   icon:'✅'},
+      {id:'reunioes', label:'Reuniões',  icon:'🗓'},
     ],
-    meetingTerca: [
+    kanbanCols:[
+      {id:'prospeccao',        label:'Prospecção',       dot:'bg-sky-400',     headerBg:'bg-sky-900/50',      colBg:'bg-sky-950/20'},
+      {id:'negociacao',        label:'Negociação',        dot:'bg-amber-400',   headerBg:'bg-amber-900/50',    colBg:'bg-amber-950/15'},
+      {id:'identidade_visual', label:'Identidade Visual', dot:'bg-violet-400',  headerBg:'bg-violet-900/50',   colBg:'bg-violet-950/15'},
+      {id:'servicos_gerais',   label:'Serviços Gerais',   dot:'bg-emerald-400', headerBg:'bg-emerald-900/50',  colBg:'bg-emerald-950/15'},
+    ],
+    meetingTerca:[
       {setor:'Conexão',    tempo:'5 min', pauta:'Quantos leads novos? Reuniões agendadas?'},
       {setor:'Experiência',tempo:'5 min', pauta:'Briefings coletados? Clientes aguardando?'},
       {setor:'Criativo',   tempo:'10 min',pauta:'Status de cada projeto — moodboard, manual, artes'},
@@ -588,110 +734,154 @@ function planner() {
       {setor:'Financeiro', tempo:'5 min', pauta:'Pagamentos pendentes? Notas a emitir?'},
       {setor:'Bloqueios',  tempo:'10 min',pauta:'O que está travado e precisa de decisão coletiva'},
     ],
-    meetingQuinta: [
+    meetingQuinta:[
       {setor:'Revisão criativa',tempo:'15 min',pauta:'Hugo apresenta materiais; Alex/Ewerton validam'},
       {setor:'Feedbacks',       tempo:'10 min',pauta:'Feedbacks de clientes recebidos na semana'},
       {setor:'Prazos',          tempo:'5 min', pauta:'Ajuste de prazos se necessário'},
       {setor:'Preview',         tempo:'10 min',pauta:'O que será entregue na semana seguinte?'},
     ],
 
-    async init() {
+    async init(){
       this.buildMeetings();
       await this.loadTasks();
       this.loadAtas();
+      this.loadDeals();
+    },
+
+    // ---- KANBAN DEALS ----
+    loadDeals(){
+      const raw=localStorage.getItem('cajuna_deals');
+      this.deals=raw?JSON.parse(raw):[];
+    },
+    saveDealsLocal(){ localStorage.setItem('cajuna_deals',JSON.stringify(this.deals)); },
+    dealsInCol(colId){ return this.deals.filter(d=>d.coluna===colId); },
+    dealsTotal(){
+      return this.deals.reduce((s,d)=>s+Number(d.valor||0),0).toLocaleString('pt-BR');
+    },
+    dealsTotalCol(colId){
+      return this.deals.filter(d=>d.coluna===colId).reduce((s,d)=>s+Number(d.valor||0),0).toLocaleString('pt-BR');
+    },
+    openNewDeal(colId){
+      this.dealForm={cliente:'',servico:'',valor:'',responsavel:'Alex',prioridade:'Média',
+        coluna:colId||'prospeccao',ultimoContato:'',contato:'',tagsRaw:'',obs:''};
+      this.dealModal=true;
+    },
+    openEditDeal(deal){
+      this.dealForm={...deal, tagsRaw:(deal.tags||[]).join(', ')};
+      this.dealModal=true;
+    },
+    saveDeal(){
+      if(!this.dealForm.cliente.trim()) return;
+      const tags=(this.dealForm.tagsRaw||'').split(',').map(t=>t.trim()).filter(Boolean);
+      const payload={...this.dealForm, tags};
+      delete payload.tagsRaw;
+      if(payload.id){
+        const i=this.deals.findIndex(d=>d.id===payload.id);
+        if(i!==-1) this.deals[i]={...payload};
+      } else {
+        payload.id='deal_'+Date.now();
+        this.deals.push(payload);
+      }
+      this.saveDealsLocal();
+      this.syncDeals();
+      this.dealModal=false;
+    },
+    deleteDeal(id){
+      if(!confirm('Remover esta negociação?')) return;
+      this.deals=this.deals.filter(d=>d.id!==id);
+      this.saveDealsLocal();
+    },
+    async syncDeals(){
+      if(!this.apiUrl) return;
+      try{ await fetch(this.apiUrl,{method:'POST',body:JSON.stringify({action:'saveDeals',deals:this.deals})}); }catch(e){}
+    },
+    prioClass(p){
+      return p==='Alta'?'bg-red-500/20 text-red-400':p==='Média'?'bg-amber-500/20 text-amber-400':'bg-slate-700 text-slate-400';
+    },
+    onDragStart(e,id){
+      this.dragId=id;
+      e.target.classList.add('dragging');
+      e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.setData('text/plain',id);
+    },
+    onDrop(e,colId){
+      const id=e.dataTransfer.getData('text/plain')||this.dragId;
+      if(!id) return;
+      const deal=this.deals.find(d=>d.id===id);
+      if(deal&&deal.coluna!==colId){
+        deal.coluna=colId;
+        this.saveDealsLocal();
+        this.syncDeals();
+      }
     },
 
     // ---- ATAS ----
-    loadAtas() {
-      const raw = localStorage.getItem('cajuna_atas');
-      this.atas = raw ? JSON.parse(raw) : [];
+    loadAtas(){
+      const raw=localStorage.getItem('cajuna_atas');
+      this.atas=raw?JSON.parse(raw):[];
     },
-    saveAtasLocal() {
-      localStorage.setItem('cajuna_atas', JSON.stringify(this.atas));
-    },
-    ataFor(key) {
-      return this.atas.find(a => a.key === key) || null;
-    },
-    atasCount() {
-      return this.atas.filter(a => a.ata || a.decisoes || a.proximos || a.status !== 'Pendente').length;
-    },
-    atasOrdenadas() {
-      // mostra apenas as que têm algum conteúdo, ordem mais recente primeiro
+    saveAtasLocal(){ localStorage.setItem('cajuna_atas',JSON.stringify(this.atas)); },
+    ataFor(key){ return this.atas.find(a=>a.key===key)||null; },
+    atasCount(){ return this.atas.filter(a=>a.ata||a.decisoes||a.proximos||a.status!=='Pendente').length; },
+    atasOrdenadas(){
       return [...this.atas]
-        .filter(a => a.ata || a.decisoes || a.proximos || a.status !== 'Pendente')
-        .sort((a,b) => b.isoData.localeCompare(a.isoData))
-        .map(a => ({...a, _open: a._open || false}));
+        .filter(a=>a.ata||a.decisoes||a.proximos||a.status!=='Pendente')
+        .sort((a,b)=>b.isoData.localeCompare(a.isoData))
+        .map(a=>({...a,_open:a._open||false}));
     },
-    openAta(r) {
-      const existing = this.ataFor(r.key);
-      this.ataForm = existing
-        ? {...existing}
-        : {key: r.key, data: r.data, diaSemana: r.diaSemana, tipo: r.tipo, isoData: r.isoData||'',
-           status:'Pendente', presentes:'Alex, Hugo, Ewerton', ata:'', decisoes:'', proximos:''};
-      this.ataModal = true;
-      this.reuniaoTab = 'historico';
+    openAta(r){
+      const existing=this.ataFor(r.key);
+      this.ataForm=existing
+        ?{...existing}
+        :{key:r.key,data:r.data,diaSemana:r.diaSemana,tipo:r.tipo,isoData:r.isoData||'',
+          status:'Pendente',presentes:'Alex, Hugo, Ewerton',ata:'',decisoes:'',proximos:''};
+      this.ataModal=true;
     },
-    saveAta() {
-      const idx = this.atas.findIndex(a => a.key === this.ataForm.key);
-      if (idx !== -1) {
-        this.atas[idx] = {...this.ataForm};
-      } else {
-        this.atas.push({...this.ataForm});
-      }
-      this.saveAtasLocal();
-      this.syncAtas();
-      this.ataModal = false;
+    saveAta(){
+      const idx=this.atas.findIndex(a=>a.key===this.ataForm.key);
+      if(idx!==-1){ this.atas[idx]={...this.ataForm}; }
+      else { this.atas.push({...this.ataForm}); }
+      this.saveAtasLocal(); this.syncAtas(); this.ataModal=false;
     },
-    deleteAta() {
-      if (!confirm('Excluir esta ata?')) return;
-      this.atas = this.atas.filter(a => a.key !== this.ataForm.key);
-      this.saveAtasLocal();
-      this.ataModal = false;
+    deleteAta(){
+      if(!confirm('Excluir esta ata?')) return;
+      this.atas=this.atas.filter(a=>a.key!==this.ataForm.key);
+      this.saveAtasLocal(); this.ataModal=false;
     },
-    async syncAtas() {
-      if (!this.apiUrl) return;
-      try {
-        await fetch(this.apiUrl, {
-          method: 'POST',
-          body: JSON.stringify({action: 'saveAtas', atas: this.atas}),
-        });
-      } catch(e) {}
+    async syncAtas(){
+      if(!this.apiUrl) return;
+      try{ await fetch(this.apiUrl,{method:'POST',body:JSON.stringify({action:'saveAtas',atas:this.atas})}); }catch(e){}
     },
 
     // ---- TASKS ----
-    async loadTasks() {
-      if (!this.apiUrl) { this.apiOk=false; this.tasks=this.defaultTasks(); return; }
-      try {
-        const res = await fetch(this.apiUrl+'?action=getTasks');
-        const data = await res.json();
-        if (Array.isArray(data)&&data.length>0) { this.tasks=data; this.apiOk=true; }
-        else if (Array.isArray(data)&&data.length===0) { this.tasks=this.defaultTasks(); await this.syncAll(); this.apiOk=true; }
+    async loadTasks(){
+      if(!this.apiUrl){ this.apiOk=false; this.tasks=this.defaultTasks(); return; }
+      try{
+        const res=await fetch(this.apiUrl+'?action=getTasks');
+        const data=await res.json();
+        if(Array.isArray(data)&&data.length>0){ this.tasks=data; this.apiOk=true; }
+        else if(Array.isArray(data)&&data.length===0){ this.tasks=this.defaultTasks(); await this.syncAll(); this.apiOk=true; }
         else throw new Error();
-      } catch(e) {
+      }catch(e){
         this.apiOk=false;
         const local=localStorage.getItem('cajuna_tasks');
         this.tasks=local?JSON.parse(local):this.defaultTasks();
       }
     },
-    async syncAll() {
-      if(!this.apiUrl) return;
-      try { await fetch(this.apiUrl,{method:'POST',body:JSON.stringify({action:'saveTasks',tasks:this.tasks})}); this.apiOk=true; }
-      catch(e){this.apiOk=false;}
-    },
-    async syncTask(task) {
+    async syncAll(){ if(!this.apiUrl) return; try{ await fetch(this.apiUrl,{method:'POST',body:JSON.stringify({action:'saveTasks',tasks:this.tasks})}); this.apiOk=true; }catch(e){this.apiOk=false;} },
+    async syncTask(task){
       localStorage.setItem('cajuna_tasks',JSON.stringify(this.tasks));
       if(!this.apiUrl) return;
       this.saving=true;
-      try { await fetch(this.apiUrl,{method:'POST',body:JSON.stringify({action:'saveTask',task})}); this.apiOk=true; }
-      catch(e){this.apiOk=false;}
+      try{ await fetch(this.apiUrl,{method:'POST',body:JSON.stringify({action:'saveTask',task})}); this.apiOk=true; }catch(e){this.apiOk=false;}
       this.saving=false;
     },
-    async removeTask(id) {
+    async removeTask(id){
       this.tasks=this.tasks.filter(t=>t.id!==id);
       localStorage.setItem('cajuna_tasks',JSON.stringify(this.tasks));
       if(!this.apiUrl) return;
       this.saving=true;
-      try { await fetch(this.apiUrl,{method:'POST',body:JSON.stringify({action:'deleteTask',id})}); } catch(e){}
+      try{ await fetch(this.apiUrl,{method:'POST',body:JSON.stringify({action:'deleteTask',id})}); }catch(e){}
       this.saving=false;
     },
     openSettings(){ this.settingsModal=true; },
@@ -714,17 +904,12 @@ function planner() {
         await this.syncTask(this.tasks[i]);
       } else {
         const newId=this.tasks.length?Math.max(...this.tasks.map(t=>Number(t.id)||0))+1:1;
-        const newTask={...this.form,id:newId};
-        this.tasks.push(newTask);
-        await this.syncTask(newTask);
+        const nt={...this.form,id:newId}; this.tasks.push(nt); await this.syncTask(nt);
       }
       this.modal=false;
     },
     async deleteTask(id){ if(!confirm('Remover esta tarefa?')) return; await this.removeTask(id); },
-    async cycleStatus(t){
-      const c={'A fazer':'Em andamento','Em andamento':'Concluído','Concluído':'A fazer'};
-      t.status=c[t.status]; await this.syncTask(t);
-    },
+    async cycleStatus(t){ const c={'A fazer':'Em andamento','Em andamento':'Concluído','Concluído':'A fazer'}; t.status=c[t.status]; await this.syncTask(t); },
     async updateStatus(t,val){ t.status=val; await this.syncTask(t); },
     filteredTasks(){
       return this.tasks.filter(t=>{
@@ -775,11 +960,10 @@ function planner() {
         if(dow===2||dow===4){
           const iso=d.toISOString().slice(0,10);
           this.allMeetings.push({
-            key: iso,
-            isoData: iso,
-            data: d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}),
-            diaSemana: dow===2?'Terça':'Quinta',
-            tipo: dow===2?'Alinhamento':'Revisão',
+            key:iso, isoData:iso,
+            data:d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}),
+            diaSemana:dow===2?'Terça':'Quinta',
+            tipo:dow===2?'Alinhamento':'Revisão',
           });
         }
         d.setDate(d.getDate()+1);
@@ -787,7 +971,7 @@ function planner() {
     },
     exportJSON(){
       const a=document.createElement('a');
-      a.href=URL.createObjectURL(new Blob([JSON.stringify({tasks:this.tasks,atas:this.atas},null,2)],{type:'application/json'}));
+      a.href=URL.createObjectURL(new Blob([JSON.stringify({tasks:this.tasks,atas:this.atas,deals:this.deals},null,2)],{type:'application/json'}));
       a.download='cajuna-planner.json'; a.click();
     },
     defaultTasks(){
