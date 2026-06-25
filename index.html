@@ -50,7 +50,6 @@
   </div>
   <div class="p-3 border-t border-slate-800 space-y-0.5">
     <button @click="exportJSON()" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-colors w-full">⬇ Exportar JSON</button>
-    <button @click="openSettings()" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-colors w-full">⚙ Configurações</button>
   </div>
 </aside>
 
@@ -72,7 +71,6 @@
       <button x-show="view!=='kanban'" @click="openAddTask()" class="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-3 py-2 rounded-lg transition-colors">
         <span class="text-base leading-none">+</span><span class="hidden sm:inline">Nova Tarefa</span>
       </button>
-      <button @click="openSettings()" class="md:hidden text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition-colors">⚙</button>
     </div>
   </div>
 
@@ -138,7 +136,6 @@
 
   <!-- ===== KANBAN CRM ===== -->
   <div x-show="view==='kanban'">
-    <!-- Métricas rápidas -->
     <div class="flex gap-3 mb-5 overflow-x-auto pb-1">
       <div class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 shrink-0">
         <p class="text-xs text-slate-500">Total pipeline</p>
@@ -157,11 +154,9 @@
         <p class="text-xl font-bold text-emerald-400 mt-0.5" x-text="deals.filter(d=>d.coluna==='servicos_gerais').length"></p>
       </div>
     </div>
-    <!-- Board -->
     <div class="flex gap-3 overflow-x-auto pb-4" style="min-height:calc(100vh - 290px)">
       <template x-for="col in kanbanCols" :key="col.id">
         <div class="flex flex-col shrink-0 w-72">
-          <!-- Header coluna -->
           <div class="flex items-center justify-between px-3 py-2.5 rounded-t-xl" :class="col.headerBg">
             <div class="flex items-center gap-2">
               <span class="w-2.5 h-2.5 rounded-full" :class="col.dot"></span>
@@ -170,7 +165,6 @@
             </div>
             <button @click="openNewDeal(col.id)" class="text-white/60 hover:text-white text-xl leading-none transition-colors" title="Novo card">+</button>
           </div>
-          <!-- Coluna droppable -->
           <div class="kanban-col flex-1 rounded-b-xl p-2 space-y-2" :class="col.colBg"
                @dragover.prevent="$event.dataTransfer.dropEffect='move'"
                @dragenter.prevent="$el.classList.add('drag-over')"
@@ -181,7 +175,6 @@
                    draggable="true"
                    @dragstart="onDragStart($event,deal.id)"
                    @dragend="$el.classList.remove('dragging')">
-                <!-- Topo: prioridade + ações -->
                 <div class="flex items-center justify-between mb-2">
                   <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="prioClass(deal.prioridade)" x-text="deal.prioridade||'Média'"></span>
                   <div class="flex items-center gap-1.5">
@@ -190,21 +183,16 @@
                     <button @click="deleteDeal(deal.id)" class="text-slate-600 hover:text-red-400 transition-colors text-sm">✕</button>
                   </div>
                 </div>
-                <!-- Nome cliente -->
                 <p class="text-sm font-semibold text-white leading-snug mb-1" x-text="deal.cliente"></p>
-                <!-- Serviço -->
                 <p class="text-xs text-slate-400 truncate mb-2" x-text="deal.servico||'Serviço não definido'"></p>
-                <!-- Valor + responsável -->
                 <div class="flex items-center justify-between">
                   <span class="text-sm font-bold text-emerald-400" x-text="deal.valor?'R$ '+Number(deal.valor).toLocaleString('pt-BR'):'—'"></span>
                   <span class="text-xs text-slate-500" x-text="deal.responsavel"></span>
                 </div>
-                <!-- Footer -->
                 <div class="mt-2 pt-2 border-t border-slate-800 flex items-center justify-between">
                   <span class="text-xs text-slate-600" x-text="deal.ultimoContato?'📅 '+deal.ultimoContato:'Sem contato'"></span>
                   <span x-show="deal.obs" class="text-slate-700 text-xs" title="Tem observações">📝</span>
                 </div>
-                <!-- Tags -->
                 <div x-show="deal.tags&&deal.tags.length" class="flex flex-wrap gap-1 mt-2">
                   <template x-for="tag in (deal.tags||[])" :key="tag">
                     <span class="text-xs bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded" x-text="tag"></span>
@@ -212,7 +200,6 @@
                 </div>
               </div>
             </template>
-            <!-- Empty state -->
             <div x-show="dealsInCol(col.id).length===0" class="text-center py-10 text-slate-700 select-none">
               <p class="text-3xl mb-1">🗂</p>
               <p class="text-xs">Arraste cards aqui</p>
@@ -669,37 +656,13 @@
   </div>
 </div>
 
-<!-- MODAL CONFIGURAÇÕES -->
-<div x-show="settingsModal" @click.self="settingsModal=false" class="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-  <div @click.stop class="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-5 shadow-2xl">
-    <div class="flex items-center justify-between mb-5">
-      <h2 class="text-base font-bold text-white">⚙ Configurações</h2>
-      <button @click="settingsModal=false" class="text-slate-500 hover:text-white text-2xl leading-none w-8 h-8 flex items-center justify-center">&times;</button>
-    </div>
-    <div class="space-y-4">
-      <div>
-        <label class="text-xs text-slate-400 mb-1 block">URL da API (Google Apps Script)</label>
-        <input x-model="apiUrl" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-brand-500 font-mono" placeholder="https://script.google.com/macros/s/.../exec" />
-      </div>
-      <div class="bg-slate-800 rounded-lg p-3 text-xs text-slate-400 space-y-1">
-        <p class="font-semibold text-slate-300">Como configurar:</p>
-        <p>1. Planilha → Extensões → Apps Script</p>
-        <p>2. Cole o código de <code class="text-brand-400">api.gs</code> e implante como Web App</p>
-        <p>3. Acesso: <strong>Qualquer pessoa</strong> · Copie a URL acima</p>
-      </div>
-    </div>
-    <div class="flex gap-3 mt-5">
-      <button @click="saveSettings()" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-medium py-2.5 rounded-lg text-sm transition-colors">Salvar e Reconectar</button>
-      <button @click="settingsModal=false" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2.5 rounded-lg text-sm transition-colors">Cancelar</button>
-    </div>
-  </div>
-</div>
-
 <script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbzcWCvBl_8xqLYW8WfIduXRLVm0gBp5f9QIXPAyGBG_wQlyw4lE2hBzG3iiQcBUx7a9/exec';
+
 function planner() {
   return {
     view: 'dashboard',
-    modal:false, settingsModal:false, ataModal:false, dealModal:false,
+    modal:false, ataModal:false, dealModal:false,
     editingId:null,
     filterMes:'', filterSetor:'', filterStatus:'', filterSearch:'',
     reuniaoTab:'pautas',
@@ -707,7 +670,6 @@ function planner() {
     tasks:[], atas:[], deals:[],
     saving:false, apiOk:null,
     dragId:null,
-    apiUrl: localStorage.getItem('cajuna_api_url')||'',
     fases:['Mês 1 — Consolidação','Mês 2 — Ativação Comercial','Mês 3 — Crescimento'],
     setores:['Site','Comercial','Operações','Conteúdo','Jurídico','Financeiro','Experiência','Criativo','Marketing'],
     ganttStart: new Date('2026-06-23'),
@@ -743,84 +705,75 @@ function planner() {
 
     async init(){
       this.buildMeetings();
-      await this.loadTasks();
-      this.loadAtas();
-      this.loadDeals();
+      await this.loadAll();
+    },
+
+    // ---- CARREGAR TUDO DA API ----
+    async loadAll(){
+      this.apiOk = null;
+      try {
+        const res  = await fetch(API_URL + '?action=load');
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error);
+
+        this.tasks = (Array.isArray(data.tasks) && data.tasks.length) ? data.tasks : this.defaultTasks();
+        this.atas  = Array.isArray(data.atas)  ? data.atas  : [];
+        this.deals = Array.isArray(data.deals) ? data.deals : [];
+
+        // Se a planilha estava vazia, popula as tarefas padrão
+        if (!Array.isArray(data.tasks) || data.tasks.length === 0) {
+          await this.post({ action:'saveTasks', tasks: this.tasks });
+        }
+        this.apiOk = true;
+      } catch(e) {
+        this.apiOk = false;
+        this.tasks = this.defaultTasks();
+        this.atas  = [];
+        this.deals = [];
+      }
+    },
+
+    async post(body){
+      try {
+        await fetch(API_URL, { method:'POST', body: JSON.stringify(body) });
+        this.apiOk = true;
+      } catch(e) { this.apiOk = false; }
     },
 
     // ---- KANBAN DEALS ----
-    loadDeals(){
-      const raw=localStorage.getItem('cajuna_deals');
-      this.deals=raw?JSON.parse(raw):[];
-    },
-    saveDealsLocal(){ localStorage.setItem('cajuna_deals',JSON.stringify(this.deals)); },
     dealsInCol(colId){ return this.deals.filter(d=>d.coluna===colId); },
-    dealsTotal(){
-      return this.deals.reduce((s,d)=>s+Number(d.valor||0),0).toLocaleString('pt-BR');
-    },
-    dealsTotalCol(colId){
-      return this.deals.filter(d=>d.coluna===colId).reduce((s,d)=>s+Number(d.valor||0),0).toLocaleString('pt-BR');
-    },
+    dealsTotal(){ return this.deals.reduce((s,d)=>s+Number(d.valor||0),0).toLocaleString('pt-BR'); },
+    dealsTotalCol(colId){ return this.deals.filter(d=>d.coluna===colId).reduce((s,d)=>s+Number(d.valor||0),0).toLocaleString('pt-BR'); },
     openNewDeal(colId){
       this.dealForm={cliente:'',servico:'',valor:'',responsavel:'Alex',prioridade:'Média',
         coluna:colId||'prospeccao',ultimoContato:'',contato:'',tagsRaw:'',obs:''};
       this.dealModal=true;
     },
-    openEditDeal(deal){
-      this.dealForm={...deal, tagsRaw:(deal.tags||[]).join(', ')};
-      this.dealModal=true;
-    },
-    saveDeal(){
+    openEditDeal(deal){ this.dealForm={...deal, tagsRaw:(deal.tags||[]).join(', ')}; this.dealModal=true; },
+    async saveDeal(){
       if(!this.dealForm.cliente.trim()) return;
       const tags=(this.dealForm.tagsRaw||'').split(',').map(t=>t.trim()).filter(Boolean);
-      const payload={...this.dealForm, tags};
-      delete payload.tagsRaw;
-      if(payload.id){
-        const i=this.deals.findIndex(d=>d.id===payload.id);
-        if(i!==-1) this.deals[i]={...payload};
-      } else {
-        payload.id='deal_'+Date.now();
-        this.deals.push(payload);
-      }
-      this.saveDealsLocal();
-      this.syncDeals();
+      const payload={...this.dealForm, tags}; delete payload.tagsRaw;
+      if(payload.id){ const i=this.deals.findIndex(d=>d.id===payload.id); if(i!==-1) this.deals[i]={...payload}; }
+      else { payload.id='deal_'+Date.now(); this.deals.push(payload); }
       this.dealModal=false;
+      await this.post({ action:'saveDeals', deals:this.deals });
     },
-    deleteDeal(id){
+    async deleteDeal(id){
       if(!confirm('Remover esta negociação?')) return;
       this.deals=this.deals.filter(d=>d.id!==id);
-      this.saveDealsLocal();
+      await this.post({ action:'saveDeals', deals:this.deals });
     },
-    async syncDeals(){
-      if(!this.apiUrl) return;
-      try{ await fetch(this.apiUrl,{method:'POST',body:JSON.stringify({action:'saveDeals',deals:this.deals})}); }catch(e){}
-    },
-    prioClass(p){
-      return p==='Alta'?'bg-red-500/20 text-red-400':p==='Média'?'bg-amber-500/20 text-amber-400':'bg-slate-700 text-slate-400';
-    },
-    onDragStart(e,id){
-      this.dragId=id;
-      e.target.classList.add('dragging');
-      e.dataTransfer.effectAllowed='move';
-      e.dataTransfer.setData('text/plain',id);
-    },
-    onDrop(e,colId){
+    prioClass(p){ return p==='Alta'?'bg-red-500/20 text-red-400':p==='Média'?'bg-amber-500/20 text-amber-400':'bg-slate-700 text-slate-400'; },
+    onDragStart(e,id){ this.dragId=id; e.target.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',id); },
+    async onDrop(e,colId){
       const id=e.dataTransfer.getData('text/plain')||this.dragId;
       if(!id) return;
       const deal=this.deals.find(d=>d.id===id);
-      if(deal&&deal.coluna!==colId){
-        deal.coluna=colId;
-        this.saveDealsLocal();
-        this.syncDeals();
-      }
+      if(deal&&deal.coluna!==colId){ deal.coluna=colId; await this.post({ action:'saveDeals', deals:this.deals }); }
     },
 
     // ---- ATAS ----
-    loadAtas(){
-      const raw=localStorage.getItem('cajuna_atas');
-      this.atas=raw?JSON.parse(raw):[];
-    },
-    saveAtasLocal(){ localStorage.setItem('cajuna_atas',JSON.stringify(this.atas)); },
     ataFor(key){ return this.atas.find(a=>a.key===key)||null; },
     atasCount(){ return this.atas.filter(a=>a.ata||a.decisoes||a.proximos||a.status!=='Pendente').length; },
     atasOrdenadas(){
@@ -831,65 +784,23 @@ function planner() {
     },
     openAta(r){
       const existing=this.ataFor(r.key);
-      this.ataForm=existing
-        ?{...existing}
-        :{key:r.key,data:r.data,diaSemana:r.diaSemana,tipo:r.tipo,isoData:r.isoData||'',
-          status:'Pendente',presentes:'Alex, Hugo, Ewerton',ata:'',decisoes:'',proximos:''};
+      this.ataForm=existing?{...existing}:{key:r.key,data:r.data,diaSemana:r.diaSemana,tipo:r.tipo,isoData:r.isoData||'',status:'Pendente',presentes:'Alex, Hugo, Ewerton',ata:'',decisoes:'',proximos:''};
       this.ataModal=true;
     },
-    saveAta(){
+    async saveAta(){
       const idx=this.atas.findIndex(a=>a.key===this.ataForm.key);
-      if(idx!==-1){ this.atas[idx]={...this.ataForm}; }
-      else { this.atas.push({...this.ataForm}); }
-      this.saveAtasLocal(); this.syncAtas(); this.ataModal=false;
+      if(idx!==-1){ this.atas[idx]={...this.ataForm}; } else { this.atas.push({...this.ataForm}); }
+      this.ataModal=false;
+      await this.post({ action:'saveAtas', atas:this.atas });
     },
-    deleteAta(){
+    async deleteAta(){
       if(!confirm('Excluir esta ata?')) return;
       this.atas=this.atas.filter(a=>a.key!==this.ataForm.key);
-      this.saveAtasLocal(); this.ataModal=false;
-    },
-    async syncAtas(){
-      if(!this.apiUrl) return;
-      try{ await fetch(this.apiUrl,{method:'POST',body:JSON.stringify({action:'saveAtas',atas:this.atas})}); }catch(e){}
+      this.ataModal=false;
+      await this.post({ action:'saveAtas', atas:this.atas });
     },
 
     // ---- TASKS ----
-    async loadTasks(){
-      if(!this.apiUrl){ this.apiOk=false; this.tasks=this.defaultTasks(); return; }
-      try{
-        const res=await fetch(this.apiUrl+'?action=getTasks');
-        const data=await res.json();
-        if(Array.isArray(data)&&data.length>0){ this.tasks=data; this.apiOk=true; }
-        else if(Array.isArray(data)&&data.length===0){ this.tasks=this.defaultTasks(); await this.syncAll(); this.apiOk=true; }
-        else throw new Error();
-      }catch(e){
-        this.apiOk=false;
-        const local=localStorage.getItem('cajuna_tasks');
-        this.tasks=local?JSON.parse(local):this.defaultTasks();
-      }
-    },
-    async syncAll(){ if(!this.apiUrl) return; try{ await fetch(this.apiUrl,{method:'POST',body:JSON.stringify({action:'saveTasks',tasks:this.tasks})}); this.apiOk=true; }catch(e){this.apiOk=false;} },
-    async syncTask(task){
-      localStorage.setItem('cajuna_tasks',JSON.stringify(this.tasks));
-      if(!this.apiUrl) return;
-      this.saving=true;
-      try{ await fetch(this.apiUrl,{method:'POST',body:JSON.stringify({action:'saveTask',task})}); this.apiOk=true; }catch(e){this.apiOk=false;}
-      this.saving=false;
-    },
-    async removeTask(id){
-      this.tasks=this.tasks.filter(t=>t.id!==id);
-      localStorage.setItem('cajuna_tasks',JSON.stringify(this.tasks));
-      if(!this.apiUrl) return;
-      this.saving=true;
-      try{ await fetch(this.apiUrl,{method:'POST',body:JSON.stringify({action:'deleteTask',id})}); }catch(e){}
-      this.saving=false;
-    },
-    openSettings(){ this.settingsModal=true; },
-    async saveSettings(){
-      localStorage.setItem('cajuna_api_url',this.apiUrl);
-      this.settingsModal=false; this.apiOk=null;
-      await this.loadTasks();
-    },
     openAddTask(){
       this.editingId=null;
       this.form={tarefa:'',setor:'Comercial',responsavel:'',mes:this.fases[0],inicio:'2026-06-23',fim:'2026-06-29',status:'A fazer',obs:''};
@@ -898,19 +809,15 @@ function planner() {
     editTask(t){ this.editingId=t.id; this.form={...t}; this.modal=true; },
     async saveTask(){
       if(!this.form.tarefa.trim()) return;
-      if(this.editingId){
-        const i=this.tasks.findIndex(t=>t.id===this.editingId);
-        if(i!==-1) this.tasks[i]={...this.form,id:this.editingId};
-        await this.syncTask(this.tasks[i]);
-      } else {
-        const newId=this.tasks.length?Math.max(...this.tasks.map(t=>Number(t.id)||0))+1:1;
-        const nt={...this.form,id:newId}; this.tasks.push(nt); await this.syncTask(nt);
-      }
-      this.modal=false;
+      if(this.editingId){ const i=this.tasks.findIndex(t=>t.id===this.editingId); if(i!==-1) this.tasks[i]={...this.form,id:this.editingId}; }
+      else { const newId=this.tasks.length?Math.max(...this.tasks.map(t=>Number(t.id)||0))+1:1; this.tasks.push({...this.form,id:newId}); }
+      this.modal=false; this.saving=true;
+      await this.post({ action:'saveTasks', tasks:this.tasks });
+      this.saving=false;
     },
-    async deleteTask(id){ if(!confirm('Remover esta tarefa?')) return; await this.removeTask(id); },
-    async cycleStatus(t){ const c={'A fazer':'Em andamento','Em andamento':'Concluído','Concluído':'A fazer'}; t.status=c[t.status]; await this.syncTask(t); },
-    async updateStatus(t,val){ t.status=val; await this.syncTask(t); },
+    async deleteTask(id){ if(!confirm('Remover esta tarefa?')) return; this.tasks=this.tasks.filter(t=>t.id!==id); await this.post({ action:'saveTasks', tasks:this.tasks }); },
+    async cycleStatus(t){ const c={'A fazer':'Em andamento','Em andamento':'Concluído','Concluído':'A fazer'}; t.status=c[t.status]; this.saving=true; await this.post({ action:'saveTasks', tasks:this.tasks }); this.saving=false; },
+    async updateStatus(t,val){ t.status=val; this.saving=true; await this.post({ action:'saveTasks', tasks:this.tasks }); this.saving=false; },
     filteredTasks(){
       return this.tasks.filter(t=>{
         if(this.filterMes&&t.mes!==this.filterMes) return false;
@@ -948,10 +855,7 @@ function planner() {
                'Conteúdo':'bg-pink-600','Jurídico':'bg-violet-600','Financeiro':'bg-teal-600',
                'Experiência':'bg-blue-600','Criativo':'bg-orange-600','Marketing':'bg-red-600'}[s]||'bg-slate-600');
     },
-    statusDot(s){
-      const b='w-3 h-3 rounded-full border-2 shrink-0 cursor-pointer ';
-      return s==='Concluído'?b+'bg-emerald-500 border-emerald-500':s==='Em andamento'?b+'bg-amber-500 border-amber-500':b+'bg-transparent border-slate-600';
-    },
+    statusDot(s){ const b='w-3 h-3 rounded-full border-2 shrink-0 cursor-pointer '; return s==='Concluído'?b+'bg-emerald-500 border-emerald-500':s==='Em andamento'?b+'bg-amber-500 border-amber-500':b+'bg-transparent border-slate-600'; },
     statusColor(s){ return s==='Concluído'?'text-emerald-400':s==='Em andamento'?'text-amber-400':'text-slate-400'; },
     buildMeetings(){
       let d=new Date('2026-06-23'),end=new Date('2026-09-22');
@@ -959,12 +863,7 @@ function planner() {
         const dow=d.getDay();
         if(dow===2||dow===4){
           const iso=d.toISOString().slice(0,10);
-          this.allMeetings.push({
-            key:iso, isoData:iso,
-            data:d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}),
-            diaSemana:dow===2?'Terça':'Quinta',
-            tipo:dow===2?'Alinhamento':'Revisão',
-          });
+          this.allMeetings.push({ key:iso, isoData:iso, data:d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}), diaSemana:dow===2?'Terça':'Quinta', tipo:dow===2?'Alinhamento':'Revisão' });
         }
         d.setDate(d.getDate()+1);
       }
