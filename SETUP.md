@@ -1,86 +1,70 @@
-# 🚀 Cajuna Planner — Guia de Setup Completo
+# 🚀 Cajuna Planner — Setup em 5 minutos
 
-## Visão geral
-
-O sistema tem 3 partes:
-1. **Google Sheets** — banco de dados (abas: Tarefas, Atas, Deals, Config)
-2. **Google Apps Script** (`api.gs`) — API que conecta o site à planilha
-3. **Site** (`index.html`) — hospedado no GitHub Pages
+## O que você vai precisar
+- Conta Google
+- Planilha Google Sheets (criar do zero)
+- Este repositório publicado via GitHub Pages
 
 ---
 
-## PASSO 1 — Criar a planilha
+## Passo 1 — Criar a Planilha
 
-1. Acesse [sheets.new](https://sheets.new) para criar uma planilha nova
-2. Renomeie para **"Cajuna Planner"**
-3. Copie o **ID da planilha** — é o trecho longo da URL entre `/d/` e `/edit`:
+1. Acesse [drive.google.com](https://drive.google.com)
+2. Crie uma nova **Planilha Google** (pode deixar em branco — as abas são criadas automaticamente)
+3. Copie o **ID** da planilha — é o trecho longo entre `/d/` e `/edit` na URL:
    ```
-   https://docs.google.com/spreadsheets/d/ **SEU_ID_AQUI** /edit
+   https://docs.google.com/spreadsheets/d/ → COLE_ESTE_TRECHO ← /edit
    ```
 
 ---
 
-## PASSO 2 — Configurar o Apps Script
+## Passo 2 — Configurar o Apps Script (API)
 
-1. Na planilha: **Extensões > Apps Script**
-2. Apague tudo e cole o conteúdo do arquivo `api.gs` deste repositório
-3. Na linha 10, substitua `COLE_O_ID_DA_SUA_PLANILHA_AQUI` pelo ID copiado no Passo 1:
-   ```js
-   const SHEET_ID = 'SEU_ID_AQUI';
-   ```
-4. Salve (Ctrl+S)
-5. Clique em **Implantar > Nova implantação**
+1. Dentro da planilha: **Extensões > Apps Script**
+2. Apague tudo que estiver no editor
+3. Cole o conteúdo completo do arquivo `api.gs` deste repositório
+4. Na linha `const SHEET_ID = 'COLE_O_ID_DA_SUA_PLANILHA_AQUI';`, substitua pelo ID copiado no Passo 1
+5. Salve com **Ctrl+S**
+6. Clique em **Implantar > Nova implantação**
    - Tipo: **Web App**
    - Executar como: **Eu mesmo**
-   - Quem pode acessar: **Qualquer pessoa**
-6. Clique **Implantar**, autorize as permissões
-7. **Copie a URL** gerada (começa com `https://script.google.com/macros/s/...`)
+   - Quem pode acessar: **Qualquer pessoa (inclusive anônimos)**
+7. Clique em **Implantar**, autorize as permissões solicitadas
+8. **Copie a URL gerada** — começa com `https://script.google.com/macros/s/...`
 
 ---
 
-## PASSO 3 — Conectar o site à API
+## Passo 3 — Conectar a URL no Site
 
-1. Abra o site no navegador
-2. Clique em **⚙ Configurações** (canto inferior esquerdo na sidebar)
-3. Cole a URL do Apps Script no campo
-4. Clique **Salvar e Reconectar**
-5. O indicador deve ficar 🟢 **Sheets conectado**
-
-> A URL fica salva no `localStorage` do navegador. Cada pessoa que acessar o site precisa fazer esse passo **uma única vez**.
+1. No arquivo `index.html` deste repositório, localize a linha:
+   ```javascript
+   const API_URL = 'COLE_A_URL_DO_APPS_SCRIPT_AQUI';
+   ```
+2. Substitua `COLE_A_URL_DO_APPS_SCRIPT_AQUI` pela URL copiada no Passo 2
+3. Salve e faça commit (ou edite direto no GitHub)
 
 ---
 
-## PASSO 4 — Publicar o site (GitHub Pages)
+## Passo 4 — Publicar via GitHub Pages
 
-1. No repositório GitHub: **Settings > Pages**
+1. No repositório: **Settings > Pages**
 2. Source: **Deploy from a branch**
-3. Branch: **main** / pasta: **/ (root)**
-4. Salve — em ~1 minuto o site estará disponível em:
-   ```
-   https://cajunastudio.github.io/cajuna-planner/
-   ```
-5. Compartilhe esse link com toda a equipe
+3. Branch: **main / root**
+4. Salve — em ~1 minuto o site estará online
+5. Compartilhe a URL com toda a equipe!
 
 ---
 
-## Estrutura da planilha
+## ✅ Resultado
 
-| Aba | Colunas |
-|---|---|
-| **Tarefas** | id, tarefa, setor, responsavel, inicio, fim, mes, status, obs |
-| **Atas** | key, data, diaSemana, tipo, isoData, status, presentes, ata, decisoes, proximos |
-| **Deals** | id, cliente, servico, valor, responsavel, prioridade, coluna, ultimoContato, contato, tags, obs |
-| **Config** | ganttStart, ganttEnd |
+As abas da planilha (**Tarefas**, **Atas**, **Deals**) são criadas automaticamente no primeiro acesso.
+As 17 tarefas do planejamento estratégico já vêm pré-carregadas.
 
-As abas são criadas automaticamente pelo script na primeira execução.
+**Qualquer pessoa com o link acessa e edita os mesmos dados em tempo real — sem instalar nada, sem configurar nada.**
 
 ---
 
-## ⚠️ Problemas comuns
+## ⚠️ Importante: Reimplantar após editar o api.gs
 
-| Problema | Solução |
-|---|---|
-| Indicador vermelho "Modo offline" | Verifique se a URL do script está correta em ⚙ Configurações |
-| Dados não aparecem para outros | Cada usuário precisa colar a URL em Configurações uma vez |
-| Erro de autorização | Reimplante o script e reautorize |
-| Aba não criada na planilha | Acesse `?action=getAll` na URL da API para forçar criação |
+Se você editar o `api.gs` no futuro, sempre crie uma **nova implantação** (não edite a existente).
+A URL muda — atualize no `index.html` também.
