@@ -1,5 +1,5 @@
 // ============================================================
-// CAJUNA PLANNER — Google Apps Script Backend v3
+// CAJUNA PLANNER — Google Apps Script Backend v4
 // ------------------------------------------------------------
 // PASSO A PASSO (ÚNICO — só fazer uma vez):
 //
@@ -12,17 +12,19 @@
 //    - Executar como: Eu mesmo
 //    - Quem pode acessar: Qualquer pessoa (anônimos)
 // 6. Autorize e copie a URL gerada
-// 7. No index.html, substitua COLE_A_URL_DO_APPS_SCRIPT_AQUI pela URL copiada
+// 7. No index.html, substitua a constante API_URL pela URL copiada
 // 8. As abas da planilha são criadas automaticamente no primeiro acesso!
 // ============================================================
 
-const SHEET_ID    = 'COLE_O_ID_DA_SUA_PLANILHA_AQUI';
-const SHEET_TASKS = 'Tarefas';
-const SHEET_ATAS  = 'Atas';
-const SHEET_DEALS = 'Deals';
+const SHEET_ID      = 'COLE_O_ID_DA_SUA_PLANILHA_AQUI';
+const SHEET_TASKS   = 'Tarefas';
+const SHEET_ATAS    = 'Atas';
+const SHEET_DEALS   = 'Deals';
+const SHEET_USERS   = 'Usuarios';
 
 function cors(output) {
-  return output.setMimeType(ContentService.MimeType.JSON);
+  return output
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function doGet(e) {
@@ -32,7 +34,7 @@ function doGet(e) {
     if      (action === 'getTasks') result = getTasks();
     else if (action === 'getAtas')  result = getAtas();
     else if (action === 'getDeals') result = getDeals();
-    else if (action === 'getAll')   result = { tasks: getTasks(), atas: getAtas(), deals: getDeals() };
+    else if (action === 'getAll')   result = { ok:true, tasks: getTasks(), atas: getAtas(), deals: getDeals() };
     else result = { error: 'Ação inválida' };
   } catch(err) {
     result = { error: err.message };
@@ -45,7 +47,8 @@ function doPost(e) {
   try {
     body = JSON.parse(e.postData.contents);
     const action = body.action;
-    if      (action === 'saveTask')   result = saveTask(body.task);
+    if      (action === 'login')      result = loginUser(body.email, body.senha);
+    else if (action === 'saveTask')   result = saveTask(body.task);
     else if (action === 'deleteTask') result = deleteTask(body.id);
     else if (action === 'saveTasks')  result = saveTasks(body.tasks);
     else if (action === 'saveAtas')   result = saveAtas(body.atas);
@@ -57,6 +60,33 @@ function doPost(e) {
     result = { error: err.message };
   }
   return cors(ContentService.createTextOutput(JSON.stringify(result)));
+}
+
+// ================================================================
+// LOGIN
+// ================================================================
+function loginUser(email, senha) {
+  const sheet = getOrCreateSheet(SHEET_USERS);
+  const data  = sheet.getDataRange().getValues();
+  if (data.length <= 1) return { ok: false, error: 'Nenhum usuário cadastrado.' };
+  const headers = data[0].map(String);
+  const emailCol = headers.indexOf('email');
+  const senhaCol = headers.indexOf('senha');
+  const tipoCol  = headers.indexOf('tipo');
+  const nomeCol  = headers.indexOf('nome');
+  for (let i = 1; i < data.length; i++) {
+    const rowEmail = String(data[i][emailCol]).trim().toLowerCase();
+    const rowSenha = String(data[i][senhaCol]).trim();
+    if (rowEmail === email.trim().toLowerCase() && rowSenha === senha.trim()) {
+      return {
+        ok:    true,
+        nome:  nomeCol >= 0 ? String(data[i][nomeCol]) : '',
+        email: rowEmail,
+        tipo:  tipoCol >= 0 ? String(data[i][tipoCol]) : 'dashboard',
+      };
+    }
+  }
+  return { ok: false, error: 'Email ou senha incorretos.' };
 }
 
 // ================================================================
@@ -219,6 +249,11 @@ function getOrCreateSheet(name) {
     }
     if (name === SHEET_DEALS) {
       sheet.appendRow(['id','cliente','servico','valor','responsavel','prioridade','coluna','ultimoContato','contato','tags','obs']);
+    }
+    if (name === SHEET_USERS) {
+      sheet.appendRow(['email','senha','tipo','nome']);
+      // Usuário padrão inicial — ALTERE A SENHA APÓS O PRIMEIRO ACESSO
+      sheet.appendRow(['admin@cajunastudio.com.br','cajuna2026','dashboard','Admin']);
     }
   }
   return sheet;
