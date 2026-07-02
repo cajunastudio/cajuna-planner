@@ -155,7 +155,6 @@
         </div>
       </template>
     </div>
-    <!-- Mini Kanban no Dashboard -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
       <template x-for="col in kanbanCols" :key="col.id">
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 cursor-pointer hover:border-slate-600 transition-colors" @click="view='kanban'">
@@ -396,8 +395,6 @@
       </button>
       <button @click="reuniaoTab='calendario'" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors" :class="reuniaoTab==='calendario'?'bg-brand-600 text-white':'text-slate-400 hover:text-white'">Calendário</button>
     </div>
-
-    <!-- PAUTAS -->
     <div x-show="reuniaoTab==='pautas'">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
@@ -406,10 +403,7 @@
             <template x-for="item in meetingTerca" :key="item.setor">
               <div class="flex gap-3 items-start">
                 <span class="text-xs text-brand-400 font-mono w-12 shrink-0 pt-0.5" x-text="item.tempo"></span>
-                <div>
-                  <p class="text-sm font-medium text-white" x-text="item.setor"></p>
-                  <p class="text-xs text-slate-400 mt-0.5" x-text="item.pauta"></p>
-                </div>
+                <div><p class="text-sm font-medium text-white" x-text="item.setor"></p><p class="text-xs text-slate-400 mt-0.5" x-text="item.pauta"></p></div>
               </div>
             </template>
           </div>
@@ -420,36 +414,21 @@
             <template x-for="item in meetingQuinta" :key="item.setor">
               <div class="flex gap-3 items-start">
                 <span class="text-xs text-amber-400 font-mono w-12 shrink-0 pt-0.5" x-text="item.tempo"></span>
-                <div>
-                  <p class="text-sm font-medium text-white" x-text="item.setor"></p>
-                  <p class="text-xs text-slate-400 mt-0.5" x-text="item.pauta"></p>
-                </div>
+                <div><p class="text-sm font-medium text-white" x-text="item.setor"></p><p class="text-xs text-slate-400 mt-0.5" x-text="item.pauta"></p></div>
               </div>
             </template>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- HISTÓRICO -->
     <div x-show="reuniaoTab==='historico'">
       <div class="grid grid-cols-3 gap-3 mb-5">
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
-          <p class="text-2xl font-bold text-white" x-text="atasCount()"></p>
-          <p class="text-xs text-slate-500 mt-0.5">Atas registradas</p>
-        </div>
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
-          <p class="text-2xl font-bold text-emerald-400" x-text="atas.filter(a=>a.status==='Realizada').length"></p>
-          <p class="text-xs text-slate-500 mt-0.5">Realizadas</p>
-        </div>
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
-          <p class="text-2xl font-bold text-red-400" x-text="atas.filter(a=>a.status==='Cancelada').length"></p>
-          <p class="text-xs text-slate-500 mt-0.5">Canceladas</p>
-        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center"><p class="text-2xl font-bold text-white" x-text="atasCount()"></p><p class="text-xs text-slate-500 mt-0.5">Atas registradas</p></div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center"><p class="text-2xl font-bold text-emerald-400" x-text="atas.filter(a=>a.status==='Realizada').length"></p><p class="text-xs text-slate-500 mt-0.5">Realizadas</p></div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center"><p class="text-2xl font-bold text-red-400" x-text="atas.filter(a=>a.status==='Cancelada').length"></p><p class="text-xs text-slate-500 mt-0.5">Canceladas</p></div>
       </div>
       <div x-show="atasCount()===0" class="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center">
-        <p class="text-2xl mb-2">📓</p>
-        <p class="text-slate-400 text-sm">Nenhuma ata registrada ainda.</p>
+        <p class="text-2xl mb-2">📓</p><p class="text-slate-400 text-sm">Nenhuma ata registrada ainda.</p>
         <p class="text-slate-600 text-xs mt-1">Vá em Calendário e clique em uma reunião para registrar.</p>
       </div>
       <div class="space-y-3">
@@ -462,9 +441,7 @@
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
                   <p class="text-sm font-semibold text-white" x-text="ata.diaSemana+', '+ata.data"></p>
-                  <span class="text-xs px-2 py-0.5 rounded-full font-medium"
-                    :class="ata.status==='Realizada'?'bg-emerald-500/15 text-emerald-400':ata.status==='Cancelada'?'bg-red-500/15 text-red-400':'bg-slate-700 text-slate-400'"
-                    x-text="ata.status||'Pendente'"></span>
+                  <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="ata.status==='Realizada'?'bg-emerald-500/15 text-emerald-400':ata.status==='Cancelada'?'bg-red-500/15 text-red-400':'bg-slate-700 text-slate-400'" x-text="ata.status||'Pendente'"></span>
                   <span class="text-xs text-slate-500" x-text="ata.tipo"></span>
                 </div>
                 <p x-show="ata.presentes" class="text-xs text-slate-500 mt-0.5 truncate" x-text="'👤 '+ata.presentes"></p>
@@ -475,34 +452,22 @@
               </div>
             </div>
             <div x-show="ata._open" x-transition class="px-4 pb-4 border-t border-slate-800">
-              <div x-show="ata.ata" class="mt-3">
-                <p class="text-xs text-slate-500 mb-1.5 uppercase tracking-wide font-medium">Ata / Anotações</p>
-                <div class="bg-slate-800/60 rounded-lg p-3 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed" x-text="ata.ata"></div>
-              </div>
-              <div x-show="ata.decisoes" class="mt-3">
-                <p class="text-xs text-slate-500 mb-1.5 uppercase tracking-wide font-medium">Decisões tomadas</p>
-                <div class="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed" x-text="ata.decisoes"></div>
-              </div>
-              <div x-show="ata.proximos" class="mt-3">
-                <p class="text-xs text-slate-500 mb-1.5 uppercase tracking-wide font-medium">Próximos passos</p>
-                <div class="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed" x-text="ata.proximos"></div>
-              </div>
+              <div x-show="ata.ata" class="mt-3"><p class="text-xs text-slate-500 mb-1.5 uppercase tracking-wide font-medium">Ata / Anotações</p><div class="bg-slate-800/60 rounded-lg p-3 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed" x-text="ata.ata"></div></div>
+              <div x-show="ata.decisoes" class="mt-3"><p class="text-xs text-slate-500 mb-1.5 uppercase tracking-wide font-medium">Decisões tomadas</p><div class="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed" x-text="ata.decisoes"></div></div>
+              <div x-show="ata.proximos" class="mt-3"><p class="text-xs text-slate-500 mb-1.5 uppercase tracking-wide font-medium">Próximos passos</p><div class="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed" x-text="ata.proximos"></div></div>
               <div x-show="!ata.ata&&!ata.decisoes&&!ata.proximos" class="mt-3 text-slate-600 text-xs text-center py-2">Nenhuma nota. Clique em Editar para adicionar.</div>
             </div>
           </div>
         </template>
       </div>
     </div>
-
-    <!-- CALENDÁRIO -->
     <div x-show="reuniaoTab==='calendario'">
       <p class="text-xs text-slate-500 mb-3">Clique em qualquer reunião para registrar ou editar a ata.</p>
       <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-2">
         <template x-for="r in allMeetings" :key="r.key">
           <button @click="openAta(r)" class="border rounded-xl p-2.5 text-center transition-all hover:scale-105 relative"
             :class="ataFor(r.key)?(ataFor(r.key).status==='Realizada'?'border-emerald-500/50 bg-emerald-500/8':ataFor(r.key).status==='Cancelada'?'border-red-500/30 bg-red-500/5':r.tipo==='Alinhamento'?'border-brand-600/40 bg-brand-600/5':'border-amber-500/40 bg-amber-500/5'):'border-slate-700 bg-slate-900'">
-            <span x-show="ataFor(r.key)" class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full"
-              :class="ataFor(r.key)?.status==='Realizada'?'bg-emerald-500':ataFor(r.key)?.status==='Cancelada'?'bg-red-500':'bg-amber-400'"></span>
+            <span x-show="ataFor(r.key)" class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full" :class="ataFor(r.key)?.status==='Realizada'?'bg-emerald-500':ataFor(r.key)?.status==='Cancelada'?'bg-red-500':'bg-amber-400'"></span>
             <p class="text-xs font-bold" :class="r.tipo==='Alinhamento'?'text-brand-400':'text-amber-400'" x-text="r.diaSemana.slice(0,3)"></p>
             <p class="text-sm font-semibold text-white mt-0.5" x-text="r.data"></p>
             <p class="text-xs mt-0.5" :class="ataFor(r.key)?'text-emerald-400':'text-slate-600'" x-text="ataFor(r.key)?'✓ ata':'+ ata'"></p>
@@ -532,43 +497,28 @@
   </template>
 </nav>
 
-<!-- ===== MODAL ATA ===== -->
+<!-- MODAL ATA -->
 <div x-show="ataModal" @click.self="ataModal=false" class="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
   <div @click.stop class="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl p-5 shadow-2xl max-h-[95vh] overflow-y-auto">
     <div class="flex items-center justify-between mb-4">
-      <div>
-        <h2 class="text-base font-bold text-white" x-text="(ataForm.diaSemana||'')+', '+ataForm.data"></h2>
-        <p class="text-xs text-slate-500 mt-0.5" x-text="(ataForm.tipo||'')+' · 20:30'"></p>
-      </div>
+      <div><h2 class="text-base font-bold text-white" x-text="(ataForm.diaSemana||'')+', '+ataForm.data"></h2><p class="text-xs text-slate-500 mt-0.5" x-text="(ataForm.tipo||'')+' · 20:30'"></p></div>
       <button @click="ataModal=false" class="text-slate-500 hover:text-white text-2xl leading-none w-8 h-8 flex items-center justify-center">&times;</button>
     </div>
     <div class="space-y-4">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Status da Reunião</label>
+        <div><label class="text-xs text-slate-400 mb-1 block">Status da Reunião</label>
           <select x-model="ataForm.status" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500">
-            <option value="Pendente">Pendente</option>
-            <option value="Realizada">Realizada</option>
-            <option value="Cancelada">Cancelada</option>
-          </select>
-        </div>
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Presentes</label>
-          <input x-model="ataForm.presentes" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Alex, Hugo, Ewerton…" />
-        </div>
+            <option value="Pendente">Pendente</option><option value="Realizada">Realizada</option><option value="Cancelada">Cancelada</option>
+          </select></div>
+        <div><label class="text-xs text-slate-400 mb-1 block">Presentes</label>
+          <input x-model="ataForm.presentes" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Alex, Hugo, Ewerton…" /></div>
       </div>
-      <div>
-        <label class="text-xs text-slate-400 mb-1 block">Ata — Anotações gerais</label>
-        <textarea x-model="ataForm.ata" rows="5" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 resize-none leading-relaxed" placeholder="O que foi discutido?…"></textarea>
-      </div>
-      <div>
-        <label class="text-xs text-amber-400 mb-1 block">⚠ Decisões tomadas</label>
-        <textarea x-model="ataForm.decisoes" rows="3" class="w-full bg-slate-800 border border-amber-500/30 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 resize-none leading-relaxed" placeholder="Decisões importantes…"></textarea>
-      </div>
-      <div>
-        <label class="text-xs text-emerald-400 mb-1 block">→ Próximos passos</label>
-        <textarea x-model="ataForm.proximos" rows="3" class="w-full bg-slate-800 border border-emerald-500/30 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 resize-none leading-relaxed" placeholder="Ações, responsáveis, prazos…"></textarea>
-      </div>
+      <div><label class="text-xs text-slate-400 mb-1 block">Ata — Anotações gerais</label>
+        <textarea x-model="ataForm.ata" rows="5" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 resize-none leading-relaxed" placeholder="O que foi discutido?…"></textarea></div>
+      <div><label class="text-xs text-amber-400 mb-1 block">⚠ Decisões tomadas</label>
+        <textarea x-model="ataForm.decisoes" rows="3" class="w-full bg-slate-800 border border-amber-500/30 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 resize-none leading-relaxed" placeholder="Decisões importantes…"></textarea></div>
+      <div><label class="text-xs text-emerald-400 mb-1 block">→ Próximos passos</label>
+        <textarea x-model="ataForm.proximos" rows="3" class="w-full bg-slate-800 border border-emerald-500/30 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 resize-none leading-relaxed" placeholder="Ações, responsáveis, prazos…"></textarea></div>
     </div>
     <div class="flex gap-3 mt-5">
       <button @click="saveAta()" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-medium py-2.5 rounded-lg text-sm transition-colors">Salvar Ata</button>
@@ -578,7 +528,7 @@
   </div>
 </div>
 
-<!-- ===== MODAL DEAL CRM ===== -->
+<!-- MODAL DEAL CRM -->
 <div x-show="dealModal" @click.self="dealModal=false" class="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
   <div @click.stop class="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-xl p-5 shadow-2xl max-h-[95vh] overflow-y-auto">
     <div class="flex items-center justify-between mb-4">
@@ -586,56 +536,32 @@
       <button @click="dealModal=false" class="text-slate-500 hover:text-white text-2xl leading-none w-8 h-8 flex items-center justify-center">&times;</button>
     </div>
     <div class="space-y-3">
-      <div>
-        <label class="text-xs text-slate-400 mb-1 block">Cliente / Empresa *</label>
-        <input x-model="dealForm.cliente" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Nome do cliente ou empresa" />
+      <div><label class="text-xs text-slate-400 mb-1 block">Cliente / Empresa *</label>
+        <input x-model="dealForm.cliente" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Nome do cliente ou empresa" /></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="text-xs text-slate-400 mb-1 block">Serviço</label><input x-model="dealForm.servico" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Ex: Manual de Marca" /></div>
+        <div><label class="text-xs text-slate-400 mb-1 block">Valor estimado (R$)</label><input type="number" x-model="dealForm.valor" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="0" /></div>
       </div>
       <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Serviço</label>
-          <input x-model="dealForm.servico" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Ex: Manual de Marca" />
-        </div>
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Valor estimado (R$)</label>
-          <input type="number" x-model="dealForm.valor" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="0" />
-        </div>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Responsável</label>
-          <input x-model="dealForm.responsavel" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Alex, Hugo…" />
-        </div>
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Prioridade</label>
+        <div><label class="text-xs text-slate-400 mb-1 block">Responsável</label><input x-model="dealForm.responsavel" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Alex, Hugo…" /></div>
+        <div><label class="text-xs text-slate-400 mb-1 block">Prioridade</label>
           <select x-model="dealForm.prioridade" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500">
             <option>Alta</option><option>Média</option><option>Baixa</option>
-          </select>
-        </div>
+          </select></div>
       </div>
       <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Etapa do funil</label>
+        <div><label class="text-xs text-slate-400 mb-1 block">Etapa do funil</label>
           <select x-model="dealForm.coluna" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500">
             <template x-for="col in kanbanCols" :key="col.id"><option :value="col.id" x-text="col.label"></option></template>
-          </select>
-        </div>
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Último contato</label>
-          <input type="date" x-model="dealForm.ultimoContato" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" />
-        </div>
+          </select></div>
+        <div><label class="text-xs text-slate-400 mb-1 block">Último contato</label><input type="date" x-model="dealForm.ultimoContato" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" /></div>
       </div>
-      <div>
-        <label class="text-xs text-slate-400 mb-1 block">Contato (email / WhatsApp)</label>
-        <input x-model="dealForm.contato" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="email@exemplo.com ou (11) 9…" />
-      </div>
-      <div>
-        <label class="text-xs text-slate-400 mb-1 block">Tags (separadas por vírgula)</label>
-        <input x-model="dealForm.tagsRaw" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Instagram, urgente, parceria…" />
-      </div>
-      <div>
-        <label class="text-xs text-slate-400 mb-1 block">Observações / Histórico</label>
-        <textarea x-model="dealForm.obs" rows="3" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 resize-none" placeholder="Contexto, próximos passos, histórico de conversas…"></textarea>
-      </div>
+      <div><label class="text-xs text-slate-400 mb-1 block">Contato (email / WhatsApp)</label>
+        <input x-model="dealForm.contato" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="email@exemplo.com ou (11) 9…" /></div>
+      <div><label class="text-xs text-slate-400 mb-1 block">Tags (separadas por vírgula)</label>
+        <input x-model="dealForm.tagsRaw" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Instagram, urgente, parceria…" /></div>
+      <div><label class="text-xs text-slate-400 mb-1 block">Observações / Histórico</label>
+        <textarea x-model="dealForm.obs" rows="3" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 resize-none" placeholder="Contexto, próximos passos, histórico de conversas…"></textarea></div>
     </div>
     <div class="flex gap-3 mt-5">
       <button @click="saveDeal()" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-medium py-2.5 rounded-lg text-sm transition-colors">Salvar</button>
@@ -652,49 +578,28 @@
       <button @click="modal=false" class="text-slate-500 hover:text-white text-2xl leading-none w-8 h-8 flex items-center justify-center">&times;</button>
     </div>
     <div class="space-y-3">
-      <div>
-        <label class="text-xs text-slate-400 mb-1 block">Tarefa *</label>
-        <input x-model="form.tarefa" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Nome da tarefa" />
-      </div>
+      <div><label class="text-xs text-slate-400 mb-1 block">Tarefa *</label><input x-model="form.tarefa" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Nome da tarefa" /></div>
       <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Setor</label>
+        <div><label class="text-xs text-slate-400 mb-1 block">Setor</label>
           <select x-model="form.setor" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500">
             <template x-for="s in setores" :key="s"><option x-text="s"></option></template>
-          </select>
-        </div>
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Responsável</label>
-          <input x-model="form.responsavel" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Alex, Hugo…" />
-        </div>
+          </select></div>
+        <div><label class="text-xs text-slate-400 mb-1 block">Responsável</label><input x-model="form.responsavel" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Alex, Hugo…" /></div>
       </div>
-      <div>
-        <label class="text-xs text-slate-400 mb-1 block">Fase</label>
+      <div><label class="text-xs text-slate-400 mb-1 block">Fase</label>
         <select x-model="form.mes" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500">
           <template x-for="f in fases" :key="f"><option x-text="f"></option></template>
-        </select>
+        </select></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="text-xs text-slate-400 mb-1 block">Início</label><input type="date" x-model="form.inicio" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" /></div>
+        <div><label class="text-xs text-slate-400 mb-1 block">Fim</label><input type="date" x-model="form.fim" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" /></div>
       </div>
       <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Início</label>
-          <input type="date" x-model="form.inicio" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" />
-        </div>
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Fim</label>
-          <input type="date" x-model="form.fim" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" />
-        </div>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Status</label>
+        <div><label class="text-xs text-slate-400 mb-1 block">Status</label>
           <select x-model="form.status" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500">
             <option>A fazer</option><option>Em andamento</option><option>Concluído</option>
-          </select>
-        </div>
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Observação</label>
-          <input x-model="form.obs" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Opcional" />
-        </div>
+          </select></div>
+        <div><label class="text-xs text-slate-400 mb-1 block">Observação</label><input x-model="form.obs" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Opcional" /></div>
       </div>
     </div>
     <div class="flex gap-3 mt-5">
@@ -705,18 +610,15 @@
 </div>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbykentjz1UzO5nclCFCyYq2VppYm5FHLnrYgp2EPW2cxPknF9SOFkyRGdXUPEHwtNx5/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxWj5evgdS-hU7GDfwdGLHDxpvcxL47_H32V-Z7km2eSb3PWuxJVX6HPoNjPi-6GTfU/exec';
 
 function planner() {
   return {
-    // ---- AUTH ----
     loggedIn: false,
     currentUser: {},
     loginForm: { email:'', senha:'', showPwd:false },
     loginError: '',
     loginLoading: false,
-
-    // ---- APP ----
     view: 'dashboard',
     modal:false, ataModal:false, dealModal:false,
     editingId:null,
@@ -739,10 +641,10 @@ function planner() {
       {id:'reunioes', label:'Reuniões',  icon:'🗓'},
     ],
     kanbanCols:[
-      {id:'prospeccao',        label:'Prospecção',       dot:'bg-sky-400',     headerBg:'bg-sky-900/50',      colBg:'bg-sky-950/20'},
-      {id:'negociacao',        label:'Negociação',        dot:'bg-amber-400',   headerBg:'bg-amber-900/50',    colBg:'bg-amber-950/15'},
-      {id:'identidade_visual', label:'Identidade Visual', dot:'bg-violet-400',  headerBg:'bg-violet-900/50',   colBg:'bg-violet-950/15'},
-      {id:'servicos_gerais',   label:'Serviços Gerais',   dot:'bg-emerald-400', headerBg:'bg-emerald-900/50',  colBg:'bg-emerald-950/15'},
+      {id:'prospeccao',        label:'Prospecção',       dot:'bg-sky-400',     headerBg:'bg-sky-900/50',     colBg:'bg-sky-950/20'},
+      {id:'negociacao',        label:'Negociação',        dot:'bg-amber-400',   headerBg:'bg-amber-900/50',   colBg:'bg-amber-950/15'},
+      {id:'identidade_visual', label:'Identidade Visual', dot:'bg-violet-400',  headerBg:'bg-violet-900/50',  colBg:'bg-violet-950/15'},
+      {id:'servicos_gerais',   label:'Serviços Gerais',   dot:'bg-emerald-400', headerBg:'bg-emerald-900/50', colBg:'bg-emerald-950/15'},
     ],
     meetingTerca:[
       {setor:'Conexão',    tempo:'5 min', pauta:'Quantos leads novos? Reuniões agendadas?'},
@@ -760,31 +662,23 @@ function planner() {
     ],
 
     async init(){
-      // Verifica sessão salva
       const saved = sessionStorage.getItem('cajuna_user');
       if (saved) {
-        try {
-          this.currentUser = JSON.parse(saved);
-          this.loggedIn = true;
-        } catch(e) { sessionStorage.removeItem('cajuna_user'); }
+        try { this.currentUser = JSON.parse(saved); this.loggedIn = true; }
+        catch(e) { sessionStorage.removeItem('cajuna_user'); }
       }
       this.buildMeetings();
       if (this.loggedIn) await this.loadAll();
     },
 
-    // ---- LOGIN / LOGOUT ----
     async doLogin(){
-      if (!this.loginForm.email || !this.loginForm.senha) {
-        this.loginError = 'Preencha e-mail e senha.';
-        return;
-      }
-      this.loginLoading = true;
-      this.loginError = '';
+      if (!this.loginForm.email || !this.loginForm.senha) { this.loginError = 'Preencha e-mail e senha.'; return; }
+      this.loginLoading = true; this.loginError = '';
       try {
-        const res  = await fetch(API_URL, { method:'POST', body: JSON.stringify({ action:'login', email: this.loginForm.email, senha: this.loginForm.senha }) });
+        const res  = await fetch(API_URL, { method:'POST', body: JSON.stringify({ action:'login', email:this.loginForm.email, senha:this.loginForm.senha }) });
         const data = await res.json();
         if (data.ok) {
-          this.currentUser = { nome: data.nome, email: data.email, tipo: data.tipo };
+          this.currentUser = { nome:data.nome, email:data.email, tipo:data.tipo };
           sessionStorage.setItem('cajuna_user', JSON.stringify(this.currentUser));
           this.loggedIn = true;
           await this.loadAll();
@@ -799,45 +693,34 @@ function planner() {
 
     doLogout(){
       sessionStorage.removeItem('cajuna_user');
-      this.loggedIn = false;
-      this.currentUser = {};
-      this.loginForm = { email:'', senha:'', showPwd:false };
-      this.loginError = '';
+      this.loggedIn = false; this.currentUser = {};
+      this.loginForm = { email:'', senha:'', showPwd:false }; this.loginError = '';
       this.tasks = []; this.atas = []; this.deals = [];
     },
 
-    // ---- CARREGAR TUDO DA API ----
     async loadAll(){
       this.apiOk = null;
       try {
         const res  = await fetch(API_URL + '?action=load');
         const data = await res.json();
         if (!data.ok) throw new Error(data.error);
-
         this.tasks = (Array.isArray(data.tasks) && data.tasks.length) ? data.tasks : this.defaultTasks();
         this.atas  = Array.isArray(data.atas)  ? data.atas  : [];
         this.deals = Array.isArray(data.deals) ? data.deals : [];
-
-        if (!Array.isArray(data.tasks) || data.tasks.length === 0) {
-          await this.post({ action:'saveTasks', tasks: this.tasks });
-        }
+        if (!Array.isArray(data.tasks) || data.tasks.length === 0)
+          await this.post({ action:'saveTasks', tasks:this.tasks });
         this.apiOk = true;
       } catch(e) {
         this.apiOk = false;
-        this.tasks = this.defaultTasks();
-        this.atas  = [];
-        this.deals = [];
+        this.tasks = this.defaultTasks(); this.atas = []; this.deals = [];
       }
     },
 
     async post(body){
-      try {
-        await fetch(API_URL, { method:'POST', body: JSON.stringify(body) });
-        this.apiOk = true;
-      } catch(e) { this.apiOk = false; }
+      try { await fetch(API_URL, { method:'POST', body:JSON.stringify(body) }); this.apiOk = true; }
+      catch(e) { this.apiOk = false; }
     },
 
-    // ---- KANBAN DEALS ----
     dealsInCol(colId){ return this.deals.filter(d=>d.coluna===colId); },
     dealsTotal(){ return this.deals.reduce((s,d)=>s+Number(d.valor||0),0).toLocaleString('pt-BR'); },
     dealsTotalCol(colId){ return this.deals.filter(d=>d.coluna===colId).reduce((s,d)=>s+Number(d.valor||0),0).toLocaleString('pt-BR'); },
@@ -850,7 +733,7 @@ function planner() {
     async saveDeal(){
       if(!this.dealForm.cliente.trim()) return;
       const tags=(this.dealForm.tagsRaw||'').split(',').map(t=>t.trim()).filter(Boolean);
-      const payload={...this.dealForm, tags}; delete payload.tagsRaw;
+      const payload={...this.dealForm,tags}; delete payload.tagsRaw;
       if(payload.id){ const i=this.deals.findIndex(d=>d.id===payload.id); if(i!==-1) this.deals[i]={...payload}; }
       else { payload.id='deal_'+Date.now(); this.deals.push(payload); }
       this.dealModal=false;
@@ -870,14 +753,11 @@ function planner() {
       if(deal&&deal.coluna!==colId){ deal.coluna=colId; await this.post({ action:'saveDeals', deals:this.deals }); }
     },
 
-    // ---- ATAS ----
     ataFor(key){ return this.atas.find(a=>a.key===key)||null; },
     atasCount(){ return this.atas.filter(a=>a.ata||a.decisoes||a.proximos||a.status!=='Pendente').length; },
     atasOrdenadas(){
-      return [...this.atas]
-        .filter(a=>a.ata||a.decisoes||a.proximos||a.status!=='Pendente')
-        .sort((a,b)=>b.isoData.localeCompare(a.isoData))
-        .map(a=>({...a,_open:a._open||false}));
+      return [...this.atas].filter(a=>a.ata||a.decisoes||a.proximos||a.status!=='Pendente')
+        .sort((a,b)=>b.isoData.localeCompare(a.isoData)).map(a=>({...a,_open:a._open||false}));
     },
     openAta(r){
       const existing=this.ataFor(r.key);
@@ -897,7 +777,6 @@ function planner() {
       await this.post({ action:'saveAtas', atas:this.atas });
     },
 
-    // ---- TASKS ----
     openAddTask(){
       this.editingId=null;
       this.form={tarefa:'',setor:'Comercial',responsavel:'',mes:this.fases[0],inicio:'2026-06-23',fim:'2026-06-29',status:'A fazer',obs:''};
