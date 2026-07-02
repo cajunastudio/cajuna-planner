@@ -16,7 +16,7 @@
 // 8. As abas da planilha são criadas automaticamente no primeiro acesso!
 // ============================================================
 
-const SHEET_ID      = 'COLE_O_ID_DA_SUA_PLANILHA_AQUI';
+const SHEET_ID      = '18Q3C9cL2KCmgCVnkY1huhD5wtlMTQ4WUnjUiyEFPdsQ';
 const SHEET_TASKS   = 'Tarefas';
 const SHEET_ATAS    = 'Atas';
 const SHEET_DEALS   = 'Deals';
@@ -34,6 +34,7 @@ function doGet(e) {
     if      (action === 'getTasks') result = getTasks();
     else if (action === 'getAtas')  result = getAtas();
     else if (action === 'getDeals') result = getDeals();
+    else if (action === 'load')     result = { ok:true, tasks: getTasks(), atas: getAtas(), deals: getDeals() };
     else if (action === 'getAll')   result = { ok:true, tasks: getTasks(), atas: getAtas(), deals: getDeals() };
     else result = { error: 'Ação inválida' };
   } catch(err) {
